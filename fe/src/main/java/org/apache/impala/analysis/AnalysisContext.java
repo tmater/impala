@@ -157,8 +157,19 @@ public class AnalysisContext {
 
     public boolean isAlterDbStmt() { return stmt_ instanceof AlterDbStmt; }
 
+    /*
+     * This method is in place to diverge the select statement and make it a DDL.
+     */
+    public boolean isSelectVirtualTableStmt() {
+      if (stmt_.getAnalyzer() == null) return false;
+      for (TableRef tblRef : stmt_.getAnalyzer().getTableRefs().values()) {
+        if (tblRef instanceof IcebergMetadataTableRef) return true;
+      }
+      return false;
+    }
+
     public boolean isCatalogOp() {
-      return isUseStmt() || isViewMetadataStmt() || isDdlStmt();
+      return isUseStmt() || isViewMetadataStmt() || isDdlStmt(); // || isSelectVirtualTableStmt();
     }
 
     public boolean isTestCaseStmt() { return stmt_ instanceof CopyTestCaseStmt; }

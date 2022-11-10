@@ -1,0 +1,32 @@
+====
+---- QUERY
+select * from functional_parquet.iceberg_alltypes_part_orc.history
+---- CATCH
+NotImplementedException: Planning not implemented for table ref class: class org.apache.impala.analysis.IcebergMetadataTableRef
+---- TYPES
+STRING
+====
+---- QUERY
+select * from functional_parquet.iceberg_alltypes_part_orc.history
+---- CATCH
+NotImplementedException: Planning not implemented for table ref class: class org.apache.impala.analysis.IcebergMetadataTableRef
+---- TYPES
+STRING
+====
+---- QUERY
+select snapshot_id from functional_parquet.iceberg_alltypes_part_orc.history
+---- CATCH
+NotImplementedException: Planning not implemented for table ref class: class org.apache.impala.analysis.IcebergMetadataTableRef
+---- TYPES
+STRING
+====
+---- QUERY
+select *
+from functional_parquet.iceberg_alltypes_part_orc.history q
+  join functional_parquet.iceberg_alltypes_part_orc.history z
+  on z.snapshot_id = q.snapshot_id
+---- CATCH
+NotImplementedException: Planning not implemented for table ref class: class org.apache.impala.analysis.IcebergMetadataTableRef
+---- TYPES
+STRING
+====

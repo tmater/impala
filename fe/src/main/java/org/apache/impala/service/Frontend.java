@@ -68,6 +68,7 @@ import org.apache.impala.analysis.CreateDataSrcStmt;
 import org.apache.impala.analysis.CreateDropRoleStmt;
 import org.apache.impala.analysis.CreateUdaStmt;
 import org.apache.impala.analysis.CreateUdfStmt;
+import org.apache.impala.analysis.DescribeHistoryStmt;
 import org.apache.impala.analysis.DescribeTableStmt;
 import org.apache.impala.analysis.DescriptorTable;
 import org.apache.impala.analysis.DropDataSrcStmt;
@@ -87,6 +88,7 @@ import org.apache.impala.analysis.StatementBase;
 import org.apache.impala.analysis.StmtMetadataLoader;
 import org.apache.impala.analysis.StmtMetadataLoader.StmtTableCache;
 import org.apache.impala.analysis.TableName;
+import org.apache.impala.analysis.TableRef;
 import org.apache.impala.analysis.TruncateStmt;
 import org.apache.impala.authentication.saml.ImpalaSamlClient;
 import org.apache.impala.authorization.AuthorizationChecker;
@@ -2217,6 +2219,9 @@ public class Frontend {
             analysisResult.isUpdateStmt() || analysisResult.isDeleteStmt());
         result.stmt_type = TStmtType.DML;
         result.query_exec_request.stmt_type = TStmtType.DML;
+      }
+      if (analysisResult.isSelectVirtualTableStmt()) {
+        throw new AnalysisException("Querying Iceberg metadata tables are not supported!");
       }
       return result;
     } catch (Exception e) {

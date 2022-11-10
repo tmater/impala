@@ -24,11 +24,13 @@ import com.google.common.base.MoreObjects;
 import org.apache.impala.catalog.ArrayType;
 import org.apache.impala.catalog.Column;
 import org.apache.impala.catalog.FeTable;
+import org.apache.impala.catalog.IcebergTable;
 import org.apache.impala.catalog.MapType;
 import org.apache.impala.catalog.StructField;
 import org.apache.impala.catalog.StructType;
 import org.apache.impala.catalog.Type;
 import org.apache.impala.catalog.VirtualColumn;
+import org.apache.impala.catalog.iceberg.IcebergMetadataTable;
 import org.apache.impala.thrift.TVirtualColumnType;
 import org.apache.impala.util.AcidUtils;
 
@@ -333,6 +335,8 @@ public class Path {
    * a.b -> [<sessionDb>.a, a.b]
    * a.b.c -> [<sessionDb>.a, a.b]
    * a.b.c... -> [<sessionDb>.a, a.b]
+   *
+   * Virtual tables are only allowed with fully qualified names.
    */
   public static List<TableName> getCandidateTables(List<String> path, String sessionDb) {
     Preconditions.checkArgument(path != null && !path.isEmpty());
@@ -341,7 +345,11 @@ public class Path {
     for (int tblNameIdx = 0; tblNameIdx < end; ++tblNameIdx) {
       String dbName = (tblNameIdx == 0) ? sessionDb : path.get(0);
       String tblName = path.get(tblNameIdx);
-      result.add(new TableName(dbName, tblName));
+      String vTblName = "";
+      if (path.size() == 3 && IcebergMetadataTable.isIcebergMetadataTable(path.get(2))) {
+        vTblName = path.get(2);
+      }
+      result.add(new TableName(dbName, tblName, vTblName));
     }
     return result;
   }

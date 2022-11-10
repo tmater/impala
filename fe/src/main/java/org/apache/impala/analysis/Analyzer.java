@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.impala.analysis.Path.PathType;
 import org.apache.impala.analysis.StmtMetadataLoader.StmtTableCache;
 import org.apache.impala.authorization.AuthorizationChecker;
@@ -63,10 +64,12 @@ import org.apache.impala.catalog.TableLoadingException;
 import org.apache.impala.catalog.Type;
 import org.apache.impala.catalog.VirtualColumn;
 import org.apache.impala.catalog.VirtualTable;
+import org.apache.impala.catalog.iceberg.IcebergMetadataTable;
 import org.apache.impala.catalog.local.LocalKuduTable;
 import org.apache.impala.common.AnalysisException;
 import org.apache.impala.common.IdGenerator;
 import org.apache.impala.common.ImpalaException;
+import org.apache.impala.common.ImpalaRuntimeException;
 import org.apache.impala.common.InternalException;
 import org.apache.impala.common.Pair;
 import org.apache.impala.common.RuntimeEnv;
@@ -867,6 +870,8 @@ public class Analyzer {
     if (resolvedPath.destTable() != null) {
       FeTable table = resolvedPath.destTable();
       if (table instanceof FeView) return new InlineViewRef((FeView) table, tableRef);
+      if (table instanceof IcebergMetadataTable)
+        return new IcebergMetadataTableRef(tableRef, resolvedPath);
       // The table must be a base table.
       Preconditions.checkState(table instanceof FeFsTable ||
           table instanceof FeKuduTable ||
@@ -1282,12 +1287,13 @@ public class Analyzer {
         TableName tblName = candidateTbls.get(tblNameIdx);
         FeTable tbl = null;
         try {
-          tbl = getTable(tblName.getDb(), tblName.getTbl(), /* must_exist */ false);
+          tbl = getTable(tblName, /* must_exist */ false);
         } catch (AnalysisException e) {
           // Ignore to allow path resolution to continue.
         }
         if (tbl != null) {
-          candidates.add(new Path(tbl, rawPath.subList(tblNameIdx + 1, rawPath.size())));
+          int offset = tblNameIdx + (tbl instanceof IcebergMetadataTable ? 2 : 1);
+          candidates.add(new Path(tbl, rawPath.subList(offset, rawPath.size())));
         }
       }
       LOG.trace("Replace candidates with {}", candidates);
@@ -3253,9 +3259,8 @@ public class Analyzer {
    * Throws a TableLoadingException if the registered table failed to load.
    * Does not register authorization requests or access events.
    */
-  public FeTable getTable(String dbName, String tableName, boolean mustExist)
+  public FeTable getTable(TableName tblName, boolean mustExist)
       throws AnalysisException, TableLoadingException {
-    TableName tblName = new TableName(dbName, tableName);
     FeTable table = globalState_.stmtTableCache.tables.get(tblName);
     if (table == null) {
       if (!mustExist) {
@@ -3273,9 +3278,18 @@ public class Analyzer {
       // when it is accessed.
       ImpalaException cause = ((FeIncompleteTable) table).getCause();
       if (cause instanceof TableLoadingException) throw (TableLoadingException) cause;
-      throw new TableLoadingException("Missing metadata for table: " + tableName, cause);
+      throw new TableLoadingException("Missing metadata for table: " + tblName, cause);
     }
     return table;
+  }
+
+  /**
+   * Wrapper around {@link #getTable(TableName tblName, boolean mustExist)}.
+   */
+  public FeTable getTable(String dbName, String tableName, boolean mustExist)
+      throws AnalysisException, TableLoadingException {
+    TableName tblName = new TableName(dbName, tableName);
+    return getTable(tblName, mustExist);
   }
 
   /**
@@ -3284,6 +3298,33 @@ public class Analyzer {
   public void addVirtualTable(VirtualTable virtTable) {
     TableName tblName = virtTable.getTableName();
     globalState_.stmtTableCache.tables.put(tblName, virtTable);
+  }
+
+  /**
+   * Adds a new metadata table to the stmt table cache. The metadata table will have its
+   * vTbl field filled, while the orinal table gets a new key without the vTbl field.
+   */
+  public void addMetaVirtualTable(List<String> tblRefPath) throws AnalysisException {
+    // TODO: this condition needs to be more smoother
+    if (tblRefPath != null &&  tblRefPath.size() == 3 &&
+        IcebergMetadataTable.isIcebergMetadataTable(tblRefPath.get(2))) {
+      try {
+        TableName originalTableName = new TableName(tblRefPath.get(0),
+            tblRefPath.get(1));
+        TableName virtualTableName = new TableName(tblRefPath.get(0),
+            tblRefPath.get(1), tblRefPath.get(2));
+        FeTable originalTable = getStmtTableCache().tables.get(virtualTableName);
+        // TODO: FIXME
+        if (originalTable instanceof IcebergMetadataTable) return;
+        IcebergMetadataTable virtualTable =
+            new IcebergMetadataTable(originalTable, tblRefPath);
+        getStmtTableCache().tables.put(originalTableName, originalTable);
+        getStmtTableCache().tables.put(virtualTableName, virtualTable);
+      } catch (ImpalaRuntimeException e) {
+        throw new AnalysisException("Could not create metadata table for table "
+            + "reference: " + StringUtils.join(tblRefPath, "."), e);
+      }
+    }
   }
 
   public org.apache.kudu.client.KuduTable getKuduTable(FeKuduTable feKuduTable)

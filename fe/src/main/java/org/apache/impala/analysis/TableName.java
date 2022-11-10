@@ -39,6 +39,7 @@ import org.apache.impala.util.CatalogBlacklistUtils;
 public class TableName {
   private final String db_;
   private final String tbl_;
+  private final String vTbl_;
 
   public TableName(String db, String tbl) {
     super();
@@ -46,12 +47,23 @@ public class TableName {
     this.db_ = db;
     Preconditions.checkNotNull(tbl);
     this.tbl_ = tbl;
+    this.vTbl_ = "";
+  }
+
+  public TableName(String db, String tbl, String vTbl) {
+    super();
+    Preconditions.checkNotNull(db);
+    this.db_ = db;
+    Preconditions.checkNotNull(tbl);
+    this.tbl_ = tbl;
+    Preconditions.checkNotNull(vTbl);
+    this.vTbl_ = vTbl;
   }
 
   /**
-   * Parse the given full name (in format <db>.<tbl>) and return a TableName object.
-   * Return null for any failures. Note that we keep table names in lower case so the
-   * string will be converted to lower case first.
+   * Parse the given full name (in format <db>.<tbl>.<vTbl>) and return a TableName
+   * object. Return null for any failures. Note that we keep table names in lower case so
+   * the string will be converted to lower case first.
    */
   public static TableName parse(String fullName) {
     // Avoid "db1." and ".tbl1" being treated as the same. We resolve ".tbl1" as
@@ -66,12 +78,18 @@ public class TableName {
     if (parts.size() == 2) {
       return new TableName(parts.get(0), parts.get(1));
     }
+    if (parts.size() == 3) {
+      // Only fully qualified names are supported for vtables
+      return new TableName(parts.get(0), parts.get(1), parts.get(2));
+    }
     return null;
   }
 
   public String getDb() { return db_; }
   public String getTbl() { return tbl_; }
+  public String getVTbl() { return vTbl_; }
   public boolean isEmpty() { return tbl_.isEmpty(); }
+  public boolean isVTbl() { return !vTbl_.isEmpty(); }
 
   /**
    * Checks whether the db and table name meet the Metastore's requirements. and not in
@@ -99,20 +117,30 @@ public class TableName {
   public String toSql() {
     // Enclose the database and/or table name in quotes if Hive cannot parse them
     // without quotes. This is needed for view compatibility between Impala and Hive.
+    StringBuilder result = new StringBuilder();
     if (db_ == null) {
-      return ToSqlUtils.getIdentSql(tbl_);
+      result.append(ToSqlUtils.getIdentSql(tbl_));
     } else {
-      return ToSqlUtils.getIdentSql(db_) + "." + ToSqlUtils.getIdentSql(tbl_);
+      result.append(ToSqlUtils.getIdentSql(db_) + "." + ToSqlUtils.getIdentSql(tbl_));
+      if (!vTbl_.isEmpty()) {
+        result.append("." + ToSqlUtils.getIdentSql(vTbl_));
+      }
     }
+    return result.toString();
   }
 
   @Override
   public String toString() {
+    StringBuilder result = new StringBuilder();
     if (db_ == null) {
-      return tbl_;
+      result.append(tbl_);
     } else {
-      return db_ + "." + tbl_;
+      result.append(db_ + "." + tbl_);
+      if (!vTbl_.isEmpty()) {
+        result.append( "." + vTbl_);
+      }
     }
+    return result.toString();
   }
 
   public List<String> toPath() {

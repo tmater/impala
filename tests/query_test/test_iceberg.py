@@ -855,6 +855,8 @@ class TestIcebergTable(IcebergTestSuite):
     SRC_DIR = os.path.join(os.environ['IMPALA_HOME'],
         "testdata/data/iceberg_test/iceberg_mixed_file_format_test/data/{0}")
     DST_DIR = "/tmp/" + unique_database + "/parquet/"
+    HIDDEN_FILE_1 = "/test-warehouse/alltypessmall/year=2009/month=1/_hidden"
+    HIDDEN_FILE_2 = "/test-warehouse/alltypessmall/year=2009/month=1/.hidden"
     self.filesystem_client.make_dir(DST_DIR, permission=777)
     file_parq1 = "00000-0-data-gfurnstahl_20220906113044_157fc172-f5d3-4c70-8653-" \
         "fff150b6136a-job_16619542960420_0002-1-00001.parquet"
@@ -884,6 +886,14 @@ class TestIcebergTable(IcebergTestSuite):
     # Test 9 init: partitioned
     DST_DIR = "/tmp/" + unique_database + "/partitioned/"
     self.filesystem_client.make_dir(DST_DIR, permission=777)
+    self.filesystem_client.copy_from_local(SRC_DIR.format(file), DST_DIR)
+    # Test 10 init: hidden files
+    DST_DIR = "/tmp/" + unique_database + "/hidden/"
+    self.filesystem_client.make_dir(DST_DIR, permission=777)
+    self.filesystem_client.create_file(DST_DIR + "_hidden.1", "Test data 123")
+    self.filesystem_client.create_file(DST_DIR + "_hidden_2.1", "Test data 123")
+    self.filesystem_client.create_file(DST_DIR + ".hidden_3", "Test data 123")
+    self.filesystem_client.create_file(DST_DIR + ".hidden_4.1", "Test data 123")
     self.filesystem_client.copy_from_local(SRC_DIR.format(file), DST_DIR)
 
     # Init test table

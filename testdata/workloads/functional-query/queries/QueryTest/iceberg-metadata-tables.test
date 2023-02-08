@@ -1,0 +1,40 @@
+====
+---- QUERY
+select * from functional_parquet.iceberg_alltypes_part_orc.history
+---- CATCH
+NotImplementedException: 'functional_parquet.iceberg_alltypes_part_orc.history' refers to a metadtata which is currently not supported.
+---- TYPES
+STRING
+====
+---- QUERY
+select * from functional_parquet.iceberg_alltypes_part_orc.manifests
+---- CATCH
+NotImplementedException: 'functional_parquet.iceberg_alltypes_part_orc.manifests' refers to a metadtata which is currently not supported.
+---- TYPES
+STRING
+====
+---- QUERY
+select snapshot_id from functional_parquet.iceberg_alltypes_part_orc.history
+---- CATCH
+NotImplementedException: 'functional_parquet.iceberg_alltypes_part_orc.history' refers to a metadtata which is currently not supported.
+---- TYPES
+STRING
+====
+---- QUERY
+select *
+from functional_parquet.iceberg_alltypes_part_orc.history q
+  join functional_parquet.iceberg_alltypes_part_orc.history z
+  on z.snapshot_id = q.snapshot_id
+---- CATCH
+NotImplementedException: 'functional_parquet.iceberg_alltypes_part_orc.history' refers to a metadtata which is currently not supported.
+---- TYPES
+STRING
+====
+---- QUERY
+select x.snapshot_id
+from (select * from functional_parquet.iceberg_alltypes_part_orc.history) x;
+---- CATCH
+NotImplementedException: 'functional_parquet.iceberg_alltypes_part_orc.history' refers to a metadtata which is currently not supported.
+---- TYPES
+STRING
+====

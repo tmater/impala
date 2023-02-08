@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.iceberg.AppendFiles;
-import org.apache.iceberg.BaseReplacePartitions;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
@@ -92,7 +91,11 @@ public class IcebergCatalogOpExecutor {
   public static void populateExternalTableCols(
       org.apache.hadoop.hive.metastore.api.Table msTbl, Table iceTbl)
       throws TableLoadingException {
-    msTbl.getSd().setCols(IcebergSchemaConverter.convertToHiveSchema(iceTbl.schema()));
+    try {
+      msTbl.getSd().setCols(IcebergSchemaConverter.convertToHiveSchema(iceTbl.schema()));
+    } catch (ImpalaRuntimeException e) {
+      throw new TableLoadingException(e.getMessage());
+    }
   }
 
   /**

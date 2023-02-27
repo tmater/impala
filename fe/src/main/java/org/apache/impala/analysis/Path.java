@@ -348,7 +348,7 @@ public class Path {
     for (int tblNameIdx = 0; tblNameIdx < end; ++tblNameIdx) {
       String dbName = (tblNameIdx == 0) ? sessionDb : path.get(0);
       String tblName = path.get(tblNameIdx);
-      String vTblName = "";
+      String vTblName = null;
       if (IcebergMetadataTable.isIcebergMetadataTable(path)) {
         vTblName = path.get(2);
       }
@@ -507,6 +507,7 @@ public class Path {
     absolutePath_ = new ArrayList<>();
     if (rootDesc_ != null) absolutePath_.addAll(rootDesc_.getPath().getAbsolutePath());
     absolutePath_.addAll(matchedPositions_);
+    org.apache.hadoop.hive.metastore.api.Table msTable = rootTable_.getMetaStoreTable();
     // ACID table schema path differs from file schema path. Let's convert it here.
     if (!absolutePath_.isEmpty() &&
         // Only convert if path was already absolute. Otherwise 'matchedPositions_' is

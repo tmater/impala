@@ -147,6 +147,9 @@ public class DistributedPlanner {
           ctx_.getNextFragmentId(), root, DataPartition.UNPARTITIONED);
     } else if (root instanceof CardinalityCheckNode) {
       result = createCardinalityCheckNodeFragment((CardinalityCheckNode) root, childFragments);
+    } else if (root instanceof IcebergMetadataScanNode) {
+      result = createIcebergMetadtataScanFragment(root);
+      fragments.add(result);
     } else {
       throw new InternalException("Cannot create plan fragment for this node type: "
           + root.getExplainString(ctx_.getQueryOptions()));
@@ -322,6 +325,10 @@ public class DistributedPlanner {
    * TODO: hbase scans are range-partitioned on the row key
    */
   private PlanFragment createScanFragment(PlanNode node) {
+    return new PlanFragment(ctx_.getNextFragmentId(), node, DataPartition.RANDOM);
+  }
+
+  private PlanFragment createIcebergMetadtataScanFragment(PlanNode node) {
     return new PlanFragment(ctx_.getNextFragmentId(), node, DataPartition.RANDOM);
   }
 

@@ -118,6 +118,7 @@ import org.apache.impala.catalog.ImpaladTableUsageTracker;
 import org.apache.impala.catalog.MaterializedViewHdfsTable;
 import org.apache.impala.catalog.MetaStoreClientPool;
 import org.apache.impala.catalog.MetaStoreClientPool.MetaStoreClient;
+import org.apache.impala.catalog.iceberg.IcebergMetadataTable;
 import org.apache.impala.catalog.TableLoadingException;
 import org.apache.impala.catalog.Type;
 import org.apache.impala.catalog.local.InconsistentMetadataFetchException;
@@ -2211,6 +2212,14 @@ public class Frontend {
         // Return the EXPLAIN request
         createExplainRequest(planCtx.getExplainString(), result);
         return result;
+      }
+
+      // Blocking query execution for queries that contain IcebergMetadtataTables
+      for (FeTable table : stmtTableCache.tables.values()) {
+        if (table instanceof IcebergMetadataTable) {
+          throw new NotImplementedException(String.format("'%s' refers to a metadtata "
+              + "which is currently not supported.", table.getFullName()));
+        }
       }
 
       result.setQuery_exec_request(queryExecRequest);

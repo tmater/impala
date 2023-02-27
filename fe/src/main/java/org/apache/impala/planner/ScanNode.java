@@ -302,10 +302,6 @@ abstract public class ScanNode extends PlanNode {
 
   @Override
   protected String getDisplayLabelDetail() {
-    FeTable table = desc_.getTable();
-    List<String> path = new ArrayList<>();
-    path.add(table.getDb().getName());
-    path.add(table.getName());
     Preconditions.checkNotNull(desc_.getPath());
     if (desc_.hasExplicitAlias()) {
       return desc_.getPath().toString() + " " + desc_.getAlias();

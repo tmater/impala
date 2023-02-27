@@ -56,7 +56,7 @@ public class TableName {
     super();
     Preconditions.checkArgument(db == null || !db.isEmpty());
     this.db_ = db;
-    Preconditions.checkArgument(tbl == null || !tbl.isEmpty());
+    Preconditions.checkNotNull(tbl);
     this.tbl_ = tbl;
     Preconditions.checkArgument(vTbl == null || !vTbl.isEmpty());
     this.vTbl_ = vTbl;
@@ -137,7 +137,7 @@ public class TableName {
       result.append(tbl_);
     } else {
       result.append(db_ + "." + tbl_);
-      if (!vTbl_.isEmpty()) {
+      if (vTbl_ != null && !vTbl_.isEmpty()) {
         result.append( "." + vTbl_);
       }
     }

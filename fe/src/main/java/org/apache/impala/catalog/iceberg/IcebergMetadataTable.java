@@ -43,14 +43,15 @@ import org.apache.impala.util.IcebergSchemaConverter;
  */
 public class IcebergMetadataTable extends VirtualTable {
   private FeIcebergTable baseTable_;
+  private String metadataTableName_;
 
   public IcebergMetadataTable(FeTable baseTable, List<String> tblRefPath)
       throws ImpalaRuntimeException {
     super(null, baseTable.getDb(), baseTable.getName(), baseTable.getOwnerUser());
     baseTable_ = (FeIcebergTable) baseTable;
-    String metadataTableTypeString = tblRefPath.get(2);
+    metadataTableName_ = tblRefPath.get(2);
     MetadataTableType type = MetadataTableType.valueOf(
-        metadataTableTypeString.toUpperCase());
+      metadataTableName_.toUpperCase());
     Table metadataTable = MetadataTableUtils.createMetadataTableInstance(
         baseTable_.getIcebergApiTable(), type);
     Schema metadataTableSchema = metadataTable.schema();
@@ -70,11 +71,21 @@ public class IcebergMetadataTable extends VirtualTable {
   }
 
   @Override
+  public String getFullName() {
+    return super.getFullName() + "." + metadataTableName_;
+  }
+
+  @Override
   public TTableStats getTTableStats() {
     long totalBytes = 0;
     TTableStats ret = new TTableStats(getNumRows());
     ret.setTotal_file_bytes(totalBytes);
     return ret;
+  }
+
+  @Override
+  public org.apache.hadoop.hive.metastore.api.Table getMetaStoreTable() {
+    return baseTable_.getMetaStoreTable();
   }
 
   /**

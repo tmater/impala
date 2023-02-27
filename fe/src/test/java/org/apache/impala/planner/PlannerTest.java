@@ -1284,6 +1284,14 @@ public class PlannerTest extends PlannerTestBase {
         ImmutableSet.of(PlannerTestOption.VALIDATE_CARDINALITY));
   }
 
+   /**
+   * Check that Iceberg metadtat table scan plans are as expected.
+   */
+  @Test
+  public void testIcebergMetadataTableScans() {
+    runPlannerTestFile("iceberg-metadata-table-scan", "functional_parquet");
+  }
+
   /**
    * Test limit pushdown into analytic sort in isolation.
    */

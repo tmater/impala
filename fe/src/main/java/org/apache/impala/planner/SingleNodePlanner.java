@@ -1899,6 +1899,14 @@ public class SingleNodePlanner {
     }
   }
 
+  private PlanNode createIcebergMetadtaScanNode(TableRef tblRef, Analyzer analyzer)
+      throws ImpalaException {
+    IcebergMetadataScanNode icebergMetadataScanNode =
+        new IcebergMetadataScanNode(ctx_.getNextNodeId(), tblRef.getDesc());
+    icebergMetadataScanNode.init(analyzer);
+    return icebergMetadataScanNode;
+  }
+
   /**
    * Returns all applicable conjuncts for join between two plan trees 'materializing' the
    * given left-hand and right-hand side table ref ids. The conjuncts either come from
@@ -2212,9 +2220,7 @@ public class SingleNodePlanner {
       result = new SingularRowSrcNode(ctx_.getNextNodeId(), ctx_.getSubplan());
       result.init(analyzer);
     } else if (tblRef instanceof IcebergMetadataTableRef) {
-      throw new NotImplementedException(String.format("'%s' refers to a metadtata "
-          + "which is currently not supported.", String.join(".",
-          tblRef.getPath())));
+      result = createIcebergMetadtaScanNode(tblRef, analyzer);
     } else {
       throw new NotImplementedException(
           "Planning not implemented for table ref class: " + tblRef.getClass());

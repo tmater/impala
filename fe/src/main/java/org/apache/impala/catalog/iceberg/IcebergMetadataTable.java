@@ -17,23 +17,46 @@
 
 package org.apache.impala.catalog.iceberg;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.apache.impala.thrift.THdfsFileFormat;
+import org.apache.impala.thrift.THdfsPartition;
+import org.apache.impala.thrift.THdfsTable;
 import org.apache.commons.lang3.EnumUtils;
+import org.apache.iceberg.ContentFile;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.FileScanTask;
+import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataTableUtils;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableScan;
+import org.apache.iceberg.io.CloseableIterable;
 import org.apache.impala.catalog.Column;
 import org.apache.impala.catalog.FeCatalogUtils;
 import org.apache.impala.catalog.FeIcebergTable;
 import org.apache.impala.catalog.FeTable;
+import org.apache.impala.catalog.HdfsFileFormat;
+import org.apache.impala.catalog.CatalogObject;
+import org.apache.impala.catalog.HdfsPartition;
+import org.apache.impala.catalog.HdfsStorageDescriptor;
+import org.apache.impala.catalog.HdfsTable;
+import org.apache.impala.catalog.IcebergTable;
 import org.apache.impala.catalog.VirtualTable;
+import org.apache.impala.catalog.HdfsStorageDescriptor.InvalidStorageDescriptorException;
 import org.apache.impala.common.ImpalaRuntimeException;
 import org.apache.impala.thrift.TTableDescriptor;
 import org.apache.impala.thrift.TTableStats;
 import org.apache.impala.util.IcebergSchemaConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Iceberg metadtata tables are predefined tables by Iceberg library. IcebergMetadataTable
@@ -42,6 +65,9 @@ import org.apache.impala.util.IcebergSchemaConverter;
  * table object based on the Iceberg API.
  */
 public class IcebergMetadataTable extends VirtualTable {
+  private final static Logger LOG = LoggerFactory.getLogger(
+      IcebergMetadataTable.class);
+
   private FeIcebergTable baseTable_;
   private String metadataTableName_;
 
@@ -49,9 +75,8 @@ public class IcebergMetadataTable extends VirtualTable {
       throws ImpalaRuntimeException {
     super(null, baseTable.getDb(), baseTable.getName(), baseTable.getOwnerUser());
     baseTable_ = (FeIcebergTable) baseTable;
-    metadataTableName_ = tblRefPath.get(2);
-    MetadataTableType type = MetadataTableType.valueOf(
-      metadataTableName_.toUpperCase());
+    metadataTableName_ = tblRefPath.get(2).toUpperCase();
+    MetadataTableType type = MetadataTableType.valueOf(metadataTableName_);
     Table metadataTable = MetadataTableUtils.createMetadataTableInstance(
         baseTable_.getIcebergApiTable(), type);
     Schema metadataTableSchema = metadataTable.schema();
@@ -75,6 +100,10 @@ public class IcebergMetadataTable extends VirtualTable {
     return super.getFullName() + "." + metadataTableName_;
   }
 
+  public String getMetadataTableName() {
+    return metadataTableName_;
+  }
+
   @Override
   public TTableStats getTTableStats() {
     long totalBytes = 0;
@@ -96,7 +125,6 @@ public class IcebergMetadataTable extends VirtualTable {
   public TTableDescriptor toThriftDescriptor(int tableId,
       Set<Long> referencedPartitions) {
     TTableDescriptor desc = baseTable_.toThriftDescriptor(tableId, referencedPartitions);
-    desc.setColumnDescriptors(FeCatalogUtils.getTColumnDescriptors(this));
     return desc;
   }
 

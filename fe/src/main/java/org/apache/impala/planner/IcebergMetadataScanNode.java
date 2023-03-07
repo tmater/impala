@@ -18,11 +18,16 @@
 package org.apache.impala.planner;
 
 import org.apache.impala.analysis.Analyzer;
+import org.apache.impala.analysis.IcebergMetadataTableRef;
+import org.apache.impala.analysis.TableRef;
 import org.apache.impala.analysis.TupleDescriptor;
 import org.apache.impala.common.ImpalaException;
 import org.apache.impala.thrift.TExplainLevel;
+import org.apache.impala.thrift.TIcebergMetadataScanNode;
 import org.apache.impala.thrift.TPlanNode;
+import org.apache.impala.thrift.TPlanNodeType;
 import org.apache.impala.thrift.TQueryOptions;
+import org.apache.impala.thrift.TTableName;
 
 import com.google.common.base.Preconditions;
 
@@ -31,9 +36,13 @@ public class IcebergMetadataScanNode extends PlanNode {
   // Tuple descriptor of the table
   protected final TupleDescriptor desc_;
 
-  protected IcebergMetadataScanNode(PlanNodeId id, TupleDescriptor desc) {
-    super(id, desc.getId().asList(), "SCAN ICEBERG METADATA");
-    desc_ = desc;
+  // Metadata table name
+  protected final String metadataTableName_;
+
+  protected IcebergMetadataScanNode(PlanNodeId id, TableRef tblRef) {
+    super(id, tblRef.getDesc().getId().asList(), "SCAN ICEBERG METADATA");
+    desc_ = tblRef.getDesc();
+    metadataTableName_ = ((IcebergMetadataTableRef)tblRef).getMetadataTableName();
   }
 
   @Override
@@ -63,7 +72,11 @@ public class IcebergMetadataScanNode extends PlanNode {
 
   @Override
   protected void toThrift(TPlanNode msg) {
-    // Implement for fragment execution
+    msg.iceberg_scan_metadata_node = new TIcebergMetadataScanNode();
+    msg.node_type = TPlanNodeType.ICEBERG_METADATA_SCAN_NODE;
+    msg.iceberg_scan_metadata_node.table_name =
+        new TTableName(desc_.getTableName().getDb(), desc_.getTableName().getTbl());
+    msg.iceberg_scan_metadata_node.metadata_table_name = metadataTableName_;
   }
 
   @Override

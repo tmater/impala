@@ -634,7 +634,10 @@ public interface FeIcebergTable extends FeFsTable {
      * Get FileDescriptor by data file location
      */
     public static HdfsPartition.FileDescriptor getFileDescriptor(
-        ContentFile<?> contentFile, FeIcebergTable table) throws IOException {
+        ContentFile<?> contentFile, FeIcebergTable table)
+        
+        
+        throws IOException {
       Path fileLoc = FileSystemUtil.createFullyQualifiedPath(
           new Path(contentFile.path().toString()));
       FileSystem fsForPath = FileSystemUtil.getFileSystemForPath(fileLoc);

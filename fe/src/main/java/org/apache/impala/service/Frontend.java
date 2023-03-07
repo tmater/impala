@@ -2214,14 +2214,6 @@ public class Frontend {
         return result;
       }
 
-      // Blocking query execution for queries that contain IcebergMetadtataTables
-      for (FeTable table : stmtTableCache.tables.values()) {
-        if (table instanceof IcebergMetadataTable) {
-          throw new NotImplementedException(String.format("'%s' refers to a metadtata "
-              + "which is currently not supported.", table.getFullName()));
-        }
-      }
-
       result.setQuery_exec_request(queryExecRequest);
       if (analysisResult.isQueryStmt()) {
         result.stmt_type = TStmtType.QUERY;

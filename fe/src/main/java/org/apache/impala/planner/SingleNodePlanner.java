@@ -71,6 +71,7 @@ import org.apache.impala.catalog.FeTable;
 import org.apache.impala.catalog.HdfsFileFormat;
 import org.apache.impala.catalog.ScalarType;
 import org.apache.impala.catalog.TableLoadingException;
+import org.apache.impala.catalog.iceberg.IcebergMetadataTable;
 import org.apache.impala.common.AnalysisException;
 import org.apache.impala.common.ImpalaException;
 import org.apache.impala.common.InternalException;
@@ -1871,7 +1872,7 @@ public class SingleNodePlanner {
     // TODO(todd) introduce FE interfaces for DataSourceTable, HBaseTable, KuduTable
     FeTable table = tblRef.getTable();
     if (table instanceof FeFsTable) {
-      if (table instanceof FeIcebergTable) {
+      if (table instanceof FeIcebergTable || table instanceof IcebergMetadataTable) {
         IcebergScanPlanner icebergPlanner = new IcebergScanPlanner(analyzer, ctx_, tblRef,
             conjuncts, aggInfo);
         return icebergPlanner.createIcebergScanPlan();
@@ -1893,7 +1894,9 @@ public class SingleNodePlanner {
           aggInfo, tblRef);
       scanNode.init(analyzer);
       return scanNode;
-    } else {
+    } else if (table instanceof IcebergMetadataTable)
+      return createIcebergMetadtaScanNode(tblRef, analyzer);
+    {
       throw new NotImplementedException(
           "Planning not implemented for table class: " + table.getClass());
     }
@@ -1902,7 +1905,7 @@ public class SingleNodePlanner {
   private PlanNode createIcebergMetadtaScanNode(TableRef tblRef, Analyzer analyzer)
       throws ImpalaException {
     IcebergMetadataScanNode icebergMetadataScanNode =
-        new IcebergMetadataScanNode(ctx_.getNextNodeId(), tblRef.getDesc());
+        new IcebergMetadataScanNode(ctx_.getNextNodeId(), tblRef);
     icebergMetadataScanNode.init(analyzer);
     return icebergMetadataScanNode;
   }
@@ -2220,7 +2223,8 @@ public class SingleNodePlanner {
       result = new SingularRowSrcNode(ctx_.getNextNodeId(), ctx_.getSubplan());
       result.init(analyzer);
     } else if (tblRef instanceof IcebergMetadataTableRef) {
-      result = createIcebergMetadtaScanNode(tblRef, analyzer);
+      result = createScanNode(tblRef, aggInfo, analyzer);
+      // result = createIcebergMetadtaScanNode(tblRef, analyzer);
     } else {
       throw new NotImplementedException(
           "Planning not implemented for table ref class: " + tblRef.getClass());

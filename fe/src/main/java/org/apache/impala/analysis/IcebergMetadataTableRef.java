@@ -29,6 +29,8 @@ import com.google.common.base.Preconditions;
  */
 public class IcebergMetadataTableRef extends TableRef {
 
+  private String metadataTableName_;
+
   public IcebergMetadataTableRef(TableRef tableRef, Path resolvedPath) {
     super(tableRef);
     Preconditions.checkState(resolvedPath.isResolved());
@@ -40,6 +42,11 @@ public class IcebergMetadataTableRef extends TableRef {
     aliases_ = new String[] {
       iceTbl.getTableName().toString().toLowerCase(),
       iceTbl.getName().toLowerCase()};
+    metadataTableName_ = iceMTbl.getMetadataTableName();
+  }
+
+  public String getMetadataTableName() {
+    return metadataTableName_;
   }
 
   @Override

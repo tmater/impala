@@ -409,7 +409,7 @@ public class DistributedPlanner {
    * Create an Iceberg Metadata scan fragment.
    */
   private PlanFragment createIcebergMetadataScanFragment(PlanNode node) {
-    return new PlanFragment(ctx_.getNextFragmentId(), node, DataPartition.UNPARTITIONED);
+    return new PlanFragment(ctx_.getNextFragmentId(), node, DataPartition.RANDOM);
   }
 
   /**

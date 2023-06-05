@@ -281,6 +281,12 @@ class JniUtil {
   static bool MethodExists(JNIEnv* env, jclass class_ref,
       const char* method_str, const char* method_signature);
 
+  static Status GetMethodID(JNIEnv* env, jclass class_ref, const char* method_str,
+      const char* method_signature, jmethodID* method_ref);
+
+  static Status GetStaticMethodID(JNIEnv* env, jclass class_ref, const char* method_str,
+      const char* method_signature, jmethodID* method_ref);
+
   /// Returns a global JNI reference to the class specified by class_str into class_ref.
   /// The returned reference must eventually be freed by calling FreeGlobalRef() (or have
   /// the lifetime of the impalad process).

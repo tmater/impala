@@ -32,16 +32,33 @@ import org.apache.hadoop.security.JniBasedUnixGroupsMappingWithFallback;
 import org.apache.hadoop.security.JniBasedUnixGroupsNetgroupMappingWithFallback;
 import org.apache.hadoop.security.ShellBasedUnixGroupsMapping;
 import org.apache.hadoop.security.ShellBasedUnixGroupsNetgroupMapping;
+import org.apache.iceberg.Accessor;
+import org.apache.iceberg.DataTask;
+import org.apache.iceberg.FileScanTask;
+import org.apache.iceberg.MetadataTableType;
+import org.apache.iceberg.MetadataTableUtils;
+import org.apache.iceberg.StructLike;
 import org.apache.impala.analysis.DescriptorTable;
 import org.apache.impala.analysis.ToSqlUtils;
 import org.apache.impala.authentication.saml.WrappedWebContext;
 import org.apache.impala.authorization.AuthorizationFactory;
 import org.apache.impala.authorization.ImpalaInternalAdminUser;
 import org.apache.impala.authorization.User;
+import org.apache.impala.catalog.DatabaseNotFoundException;
+import org.apache.impala.catalog.FeCatalog;
 import org.apache.impala.catalog.FeDataSource;
 import org.apache.impala.catalog.FeDb;
+import org.apache.impala.catalog.FeIcebergTable;
+import org.apache.impala.catalog.FeTable;
 import org.apache.impala.catalog.Function;
 import org.apache.impala.catalog.StructType;
+import org.apache.iceberg.Table;
+import org.apache.iceberg.TableScan;
+import org.apache.iceberg.data.IcebergGenerics;
+import org.apache.iceberg.data.Record;
+import org.apache.iceberg.io.CloseableIterator;
+import org.apache.iceberg.data.IcebergGenerics.ScanBuilder;
+// import org.apache.iceberg.io.CloseableIterable;
 import org.apache.impala.catalog.Type;
 import org.apache.impala.common.FileSystemUtil;
 import org.apache.impala.common.ImpalaException;
@@ -53,6 +70,7 @@ import org.apache.impala.service.Frontend.PlanCtx;
 import org.apache.impala.thrift.TBackendGflags;
 import org.apache.impala.thrift.TBuildTestDescriptorTableParams;
 import org.apache.impala.thrift.TCatalogObject;
+import org.apache.impala.thrift.TColumnValue;
 import org.apache.impala.thrift.TDatabase;
 import org.apache.impala.thrift.TDescribeDbParams;
 import org.apache.impala.thrift.TDescribeOutputStyle;
@@ -112,6 +130,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.IllegalArgumentException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
@@ -612,6 +631,19 @@ public class JniFrontend {
   public void waitForCatalog() {
     Preconditions.checkNotNull(frontend_);
     frontend_.waitForCatalog();
+  }
+
+  FeTable getCatalogTable(byte[] thriftParams) throws ImpalaException {
+    Preconditions.checkNotNull(frontend_);
+    TTableName params = new TTableName();
+    JniUtil.deserializeThrift(protocolFactory_, params, thriftParams);
+    try {
+      return frontend_.getCatalog().getTable(params.db_name, params.table_name);
+    } catch (DatabaseNotFoundException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    return null;
   }
 
   // Caching this saves ~50ms per call to getHadoopConfigAsHtml

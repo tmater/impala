@@ -64,7 +64,7 @@ static const string SCHEDULER_INIT_KEY("simple-scheduler.initialized");
 
 static const vector<TPlanNodeType::type> SCAN_NODE_TYPES{TPlanNodeType::HDFS_SCAN_NODE,
     TPlanNodeType::HBASE_SCAN_NODE, TPlanNodeType::DATA_SOURCE_NODE,
-    TPlanNodeType::KUDU_SCAN_NODE};
+    TPlanNodeType::KUDU_SCAN_NODE, TPlanNodeType::ICEBERG_METADATA_SCAN_NODE};
 
 // Consistent scheduling requires picking up to k distinct candidates out of n nodes.
 // Since each iteration can pick a node that it already picked (i.e. it is sampling with

@@ -1,0 +1,78 @@
+{
+  "format-version" : 2,
+  "table-uuid" : "0fe7c16b-70cf-4d8c-afa6-4ffd32407a0e",
+  "location" : "/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_test_metadata",
+  "last-sequence-number" : 1,
+  "last-updated-ms" : 1692188295323,
+  "last-column-id" : 1,
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "i",
+      "required" : false,
+      "type" : "int"
+    } ]
+  } ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ ]
+  } ],
+  "last-partition-id" : 999,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "engine.hive.enabled" : "true",
+    "impala.events.catalogServiceId" : "8a375a0c9d43cd:a58f3b39a1d03458",
+    "external.table.purge" : "TRUE",
+    "write.merge.mode" : "merge-on-read",
+    "impala.events.catalogVersion" : "6212",
+    "write.format.default" : "parquet",
+    "write.delete.mode" : "merge-on-read",
+    "OBJCAPABILITIES" : "EXTREAD,EXTWRITE",
+    "write.update.mode" : "merge-on-read",
+    "storage_handler" : "org.apache.iceberg.mr.hive.HiveIcebergStorageHandler"
+  },
+  "current-snapshot-id" : 8491702501245661704,
+  "refs" : {
+    "main" : {
+      "snapshot-id" : 8491702501245661704,
+      "type" : "branch"
+    }
+  },
+  "snapshots" : [ {
+    "sequence-number" : 1,
+    "snapshot-id" : 8491702501245661704,
+    "timestamp-ms" : 1692188295322,
+    "summary" : {
+      "operation" : "append",
+      "added-data-files" : "1",
+      "added-records" : "1",
+      "added-files-size" : "351",
+      "changed-partition-count" : "1",
+      "total-records" : "1",
+      "total-files-size" : "351",
+      "total-data-files" : "1",
+      "total-delete-files" : "0",
+      "total-position-deletes" : "0",
+      "total-equality-deletes" : "0"
+    },
+    "manifest-list" : "/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_test_metadata/metadata/snap-8491702501245661704-1-88a39285-529f-41a4-bd69-6d2560fac64e.avro",
+    "schema-id" : 0
+  } ],
+  "statistics" : [ ],
+  "snapshot-log" : [ {
+    "timestamp-ms" : 1692188295322,
+    "snapshot-id" : 8491702501245661704
+  } ],
+  "metadata-log" : [ {
+    "timestamp-ms" : 1692188291061,
+    "metadata-file" : "/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_test_metadata/metadata/00000-0ae98ebd-b200-4381-9d97-1f93954423a9.metadata.json"
+  } ]
+}

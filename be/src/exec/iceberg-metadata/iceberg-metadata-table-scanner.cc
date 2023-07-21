@@ -221,7 +221,14 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch,
       jobject struct_like_row = env->CallObjectMethod(data_rows_iterator,
           iceberg_closeable_iterator_next_);
       RETURN_IF_ERROR(GetRow(env, struct_like_row, tuple, state, row_batch->tuple_data_pool()));
+      Tuple* before_eval = row->GetTuple(0);
+      int64_t* before_eval_pslot = before_eval->GetBigIntSlot(24);
+      LOG(INFO) << "TMATE: Before eval conjunct: " << " parent_slot: " << *reinterpret_cast<int64_t*>(before_eval_pslot);
+      int64_t* before_eval_sslot = before_eval->GetBigIntSlot(16);
+      LOG(INFO) << "TMATE: Before eval conjunct: " << " snapshotid_slot: " << *reinterpret_cast<int64_t*>(before_eval_sslot);
       if (ExecNode::EvalConjuncts(conjunct_evals_.data(), conjunct_evals_.size(), row)) {
+        LOG(INFO) << "TMATE: After eval conjunct: " << " parent_slot: " << *reinterpret_cast<int64_t*>(before_eval_pslot);
+        LOG(INFO) << "TMATE: After eval conjunct: " << " snapshotid_slot: " << *reinterpret_cast<int64_t*>(before_eval_sslot);
         row_batch->CommitLastRow();
         committed = true;
       } else {
@@ -236,7 +243,7 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch,
 Status IcebergMetadataTableScanner::GetRow(JNIEnv* env, jobject struct_like_row,
     Tuple* tuple, RuntimeState* state, MemPool* tuple_data_pool) {
   for (SlotDescriptor* slot_desc: tuple_desc_->slots()) {
-    LOG(INFO) << "slot type: " << slot_desc->type().type << " accessor_id: ";
+    LOG(INFO) << "TMATE: slot type: " << slot_desc->type().type << " tuple_offset: " << slot_desc->tuple_offset();
     switch (slot_desc->type().type) {
       case TYPE_BOOLEAN: { // java.lang.Boolean
         RETURN_IF_ERROR(ReadBooleanValue(env, tuple, struct_like_row, slot_desc));
@@ -272,6 +279,7 @@ Status IcebergMetadataTableScanner::ReadBooleanValue(JNIEnv* env, Tuple* tuple,
     return Status::OK();
   }
   jboolean result = env->CallBooleanMethod(accessed_value, boolean_value_);
+  LOG(INFO) << "TMATE: result boolean: " << result;
   void* slot = tuple->GetSlot(slot_desc->tuple_offset());
   *reinterpret_cast<uint8_t*>(slot) = reinterpret_cast<uint8_t>(result);
   return Status::OK();
@@ -288,6 +296,7 @@ Status IcebergMetadataTableScanner::ReadIntValue(JNIEnv* env, Tuple* tuple,
     return Status::OK();
   }
   jint result = env->CallIntMethod(accessed_value, int_value_);
+  LOG(INFO) << "TMATE: result int: " << result;
   RETURN_ERROR_IF_EXC(env);
   void* slot = tuple->GetSlot(slot_desc->tuple_offset());
   *reinterpret_cast<int64_t*>(slot) = reinterpret_cast<int32_t>(result);
@@ -305,6 +314,7 @@ Status IcebergMetadataTableScanner::ReadLongValue(JNIEnv* env, Tuple* tuple,
     return Status::OK();
   }
   jlong result = env->CallLongMethod(accessed_value, long_value_);
+  LOG(INFO) << "TMATE: result long: " << result;
   RETURN_ERROR_IF_EXC(env);
   void* slot = tuple->GetSlot(slot_desc->tuple_offset());
   *reinterpret_cast<int64_t*>(slot) = reinterpret_cast<int64_t>(result);

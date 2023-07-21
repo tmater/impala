@@ -68,7 +68,6 @@ Status IcebergMetadataScanNode::Prepare(RuntimeState* state) {
   RETURN_IF_ERROR(GetCatalogTable(env, jtable)); // Move to Prepare or Init?
   RETURN_IF_ERROR(iceberg_metadata_scanner_->Prepare(env, jtable));
 
-
   return Status::OK();
 }
 

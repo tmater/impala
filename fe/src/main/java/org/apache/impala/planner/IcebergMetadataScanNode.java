@@ -52,6 +52,9 @@ public class IcebergMetadataScanNode extends ScanNode {
   public void init(Analyzer analyzer) throws ImpalaException {
     super.init(analyzer);
     scanRangeSpecs_ = new TScanRangeSpec();
+    assignConjuncts(analyzer);
+    conjuncts_ = orderConjunctsByCost(conjuncts_);
+    analyzer.materializeSlots(conjuncts_);
     computeMemLayout(analyzer);
     computeStats(analyzer);
   }

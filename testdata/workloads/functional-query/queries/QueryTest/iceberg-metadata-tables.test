@@ -1,10 +1,13 @@
 #
 #
 #  >> Test Data:e
-#  - Need multiple snapshots
-#  - Need multiple files
-#  - Need delete files
-#  - 
+#  > Small table with
+#  - multiple snapshots
+#  - multiple files
+#  - delete files
+#  > Big table
+#  - lots of snapshots
+#
 #
 #  >> Query each table at least once:
 #    ENTRIES,
@@ -12,7 +15,7 @@
 #    DATA_FILES,
 #    DELETE_FILES,
 #    HISTORY,
-#    METADATA_LOG_ENTRIES ,
+#    METADATA_LOG_ENTRIES,
 #    SNAPSHOTS,
 #    REFS,
 #    MANIFESTS,
@@ -23,34 +26,28 @@
 #    ALL_MANIFESTS,
 #    ALL_ENTRIES,
 #    POSITION_DELETES
-
-# create table iceberg_test_metadata (i int) stored as iceberg;
+# create table iceberg_test_metadata (i int) stored as iceberg TBLPROPERTIES('format-version' = '2'); 
 # insert into iceberg_test_metadata values (1);
 # insert into iceberg_test_metadata values (2);
 # insert into iceberg_test_metadata values (3);
-
-
+# delete from iceberg_test_metadata where i = 2;
+# Test-0
 ====
 ---- QUERY
-select * from functional_parquet.iceberg_non_partitioned.history
+select * from functional_parquet.iceberg_test_metadata.history
 ---- RESULTS
-2020-08-31 05:50:17.107000000,93996984692289973,NULL,true
+2023-07-21 09:56:55.109000000,7183548199109807016,NULL,true
+2023-07-21 09:56:55.450000000,6513109975109891247,7183548199109807016,true
+2023-07-21 09:56:55.762000000,3402808861336235366,6513109975109891247,true
+2023-07-21 09:56:56.280000000,6514678214355775093,3402808861336235366,true
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 ====
 ---- QUERY
-select * from functional_parquet.iceberg_v2_positional_delete_all_rows.history;
+select * from functional_parquet.iceberg_test_metadata.history
+where snapshot_id = 3402808861336235366;
 ---- RESULTS
-2022-08-19 13:09:32.575000000,8593920101374128463,NULL,true
-2022-08-19 13:09:44.689000000,444149380144800647,8593920101374128463,true
----- TYPES
-TIMESTAMP,BIGINT,BIGINT,BOOLEAN
-====
----- QUERY
-select * from functional_parquet.iceberg_v2_positional_delete_all_rows.history
-where snapshot_id = 8593920101374128463;
----- RESULTS
-2022-08-19 13:09:32.575000000,8593920101374128463,NULL,true
+2023-07-21 09:56:55.762000000,3402808861336235366,6513109975109891247,true
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 ====

@@ -62,7 +62,7 @@ Status IcebergMetadataScanNode::Prepare(RuntimeState* state) {
   }
 
   iceberg_metadata_scanner_.reset(new IcebergMetadataTableScanner(tuple_desc_,
-      metadata_table_name_, conjuncts_, conjunct_evals_));
+      metadata_table_name_, conjunct_evals_));
   RETURN_IF_ERROR(iceberg_metadata_scanner_->Init(env));
   jobject* jtable = new jobject();
   RETURN_IF_ERROR(GetCatalogTable(env, jtable)); // Move to Prepare or Init?

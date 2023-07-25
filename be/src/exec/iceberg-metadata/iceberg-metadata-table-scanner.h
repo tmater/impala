@@ -51,8 +51,7 @@ class IcebergMetadataTableScanner {
  public:
   /// Initialize the tuple descriptor and the metadata_table_name.
   IcebergMetadataTableScanner(const TupleDescriptor* tuple_desc,
-      const string* metadata_table_name, std::vector<ScalarExpr*> conjuncts,
-      std::vector<ScalarExprEvaluator*> conjunct_evals_);
+      const string* metadata_table_name, std::vector<ScalarExprEvaluator*> conjunct_evals_);
 
   /// JNI setup. Create global references to classes, and find method ids.
   Status Init(JNIEnv* env);
@@ -138,7 +137,6 @@ class IcebergMetadataTableScanner {
   /// Iceberg metadata table object that is created by this scanner.
   jobject* jmetadata_table_ = new jobject();
 
-  std::vector<ScalarExpr*> conjuncts_;
   std::vector<ScalarExprEvaluator*> conjunct_evals_;
 
   /// Accessor object for the scan result. These are in the same order as the slot

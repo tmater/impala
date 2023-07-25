@@ -25,11 +25,9 @@ namespace impala {
 IcebergMetadataTableScanner::IcebergMetadataTableScanner(
     const TupleDescriptor* tuple_desc,
     const string* metadata_table_name,
-    std::vector<ScalarExpr*> conjuncts,
     std::vector<ScalarExprEvaluator*> conjunct_evals)
   : tuple_desc_(tuple_desc),
     metadata_table_name_(metadata_table_name),
-    conjuncts_(conjuncts),
     conjunct_evals_(conjunct_evals),
     tuple_idx_(0) {}
 
@@ -223,15 +221,25 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch,
       RETURN_IF_ERROR(GetRow(env, struct_like_row, tuple, state, row_batch->tuple_data_pool()));
       Tuple* before_eval = row->GetTuple(0);
       int64_t* before_eval_pslot = before_eval->GetBigIntSlot(24);
-      LOG(INFO) << "TMATE: Before eval conjunct: " << " parent_slot: " << *reinterpret_cast<int64_t*>(before_eval_pslot);
       int64_t* before_eval_sslot = before_eval->GetBigIntSlot(16);
+      LOG(INFO) << "TMATE: Before eval conjunct: " << " parent_slot: " << *reinterpret_cast<int64_t*>(before_eval_pslot);
+      LOG(INFO) << "TMATE: Before eval conjunct: " << " parent_slot null: " << *reinterpret_cast<int64_t*>(before_eval_sslot);
       LOG(INFO) << "TMATE: Before eval conjunct: " << " snapshotid_slot: " << *reinterpret_cast<int64_t*>(before_eval_sslot);
+
+      std::string ss;
+      LOG(INFO) << "TMATE: conjunct_evals_size: " << conjunct_evals_.size();
+      if (conjunct_evals_.size() > 0) {
+        conjunct_evals_[0]->PrintValue(before_eval, &ss);
+      }
+      LOG(INFO) << "TMATE: conjunct: " << ss;
       if (ExecNode::EvalConjuncts(conjunct_evals_.data(), conjunct_evals_.size(), row)) {
         LOG(INFO) << "TMATE: After eval conjunct: " << " parent_slot: " << *reinterpret_cast<int64_t*>(before_eval_pslot);
         LOG(INFO) << "TMATE: After eval conjunct: " << " snapshotid_slot: " << *reinterpret_cast<int64_t*>(before_eval_sslot);
         row_batch->CommitLastRow();
         committed = true;
       } else {
+        Tuple::ClearNullBits(tuple, tuple_desc_->null_bytes_offset(), tuple_desc_->num_null_bytes());
+        // row_batch->ClearRow(row);
         committed = false;
       }
     }
@@ -243,7 +251,7 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch,
 Status IcebergMetadataTableScanner::GetRow(JNIEnv* env, jobject struct_like_row,
     Tuple* tuple, RuntimeState* state, MemPool* tuple_data_pool) {
   for (SlotDescriptor* slot_desc: tuple_desc_->slots()) {
-    LOG(INFO) << "TMATE: slot type: " << slot_desc->type().type << " tuple_offset: " << slot_desc->tuple_offset();
+    LOG(INFO) << "TMATE: slot type: " << slot_desc->type().type << " tuple_offset: " << slot_desc->tuple_offset() << " slot_id: " << slot_desc->id();
     switch (slot_desc->type().type) {
       case TYPE_BOOLEAN: { // java.lang.Boolean
         RETURN_IF_ERROR(ReadBooleanValue(env, tuple, struct_like_row, slot_desc));

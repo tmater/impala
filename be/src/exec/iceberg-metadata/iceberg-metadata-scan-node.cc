@@ -29,6 +29,7 @@
 #include "util/bit-util.h"
 #include "common/names.h"
 
+
 using namespace impala;
 
 class Tuple;

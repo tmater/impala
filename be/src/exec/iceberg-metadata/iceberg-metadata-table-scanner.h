@@ -44,23 +44,24 @@ class MemTracker;
 /// iterating over the rows and the fields and extracting the values with  {Accessor}(s).
 /// For clarity, the matching Java calls are indicated over the JNI calls in comments.
 ///
+/// Primitive Iceberg types are defined as primitive Java types and can be accessed with
+/// through the java.lang class objects.
+///
 /// Requirements:
 /// - The Iceberg table has to be loaded in the JVM
-/// - Iceberg version compatibility: 1.1
 class IcebergMetadataTableScanner {
  public:
   /// Initialize the tuple descriptor and the metadata_table_name.
   IcebergMetadataTableScanner(const TupleDescriptor* tuple_desc,
       const string* metadata_table_name, std::vector<ScalarExprEvaluator*> conjunct_evals_);
 
-  /// JNI setup. Create global references to classes, and find method ids.
+  /// JNI setup. Create global references for Java classes and find method ids.
   Status Init(JNIEnv* env);
 
   /// Create Metadata Table object and the Accessors.
   Status Prepare(JNIEnv* env, jobject* fe_table);
 
   /// Creates the Java Iceberg API Metadata table object and executes the table scan.
-  /// It also initializes the Accessors.
   Status ScanMetadataTable(JNIEnv* env);
 
   /// Iterates over the scan result and fills the RowBatch till it reaches its limit.
@@ -108,8 +109,7 @@ class IcebergMetadataTableScanner {
   inline static jmethodID long_value_;
   inline static jmethodID char_sequence_value_;
 
-  /// Getting enum objects are not straigthforward calls:
-  /// enum -> field -> object
+  /// Getting enum objects are not straigthforward calls: enum -> field -> object
   Status CreateJIcebergMetadataTable(JNIEnv* env, jobject* jtable);
  
   /// Create the accessors for the StructLike rows.
@@ -117,21 +117,33 @@ class IcebergMetadataTableScanner {
 
   /// Takes a StructLike object accesses its records, create a tuple from the result and
   /// adds it to the row_batch.
-  Status GetRow(JNIEnv* env, jobject struct_like_row, Tuple* tuple,
+  Status MaterializeNextRow(JNIEnv* env, jobject struct_like_row, Tuple* tuple,
       RuntimeState* state, MemPool* tuple_data_pool);
 
- Status ReadBooleanValue(JNIEnv* env, Tuple* tuple, jobject struct_like_row, SlotDescriptor* slot_desc);
- Status ReadIntValue(JNIEnv* env, Tuple* tuple, jobject struct_like_row, SlotDescriptor* slot_desc);
- Status ReadLongValue(JNIEnv* env, Tuple* tuple, jobject struct_like_row, SlotDescriptor* slot_desc);
- Status ReadTimeStampValue(JNIEnv* env, Tuple* tuple, jobject struct_like_row, SlotDescriptor* slot_desc);
- Status ReadStringValue(JNIEnv* env, Tuple* tuple, jobject struct_like_row, SlotDescriptor* slot_desc, MemPool* tuple_data_pool);
+  /// Reads the value of a primitive from the StructLikeRow, translates it to a matching
+  /// Impala type and writes it into the target tuple. The related Accessor objects are
+  /// stored in the jaccessors_ map and created during Prepare.
+  Status ReadBooleanValue(JNIEnv* env, SlotDescriptor* slot_desc, jobject struct_like_row,
+      Tuple* tuple);
+  Status ReadIntValue(JNIEnv* env, SlotDescriptor* slot_desc, jobject struct_like_row,
+      Tuple* tuple);
+  Status ReadLongValue(JNIEnv* env, SlotDescriptor* slot_desc, jobject struct_like_row,
+      Tuple* tuple);
+  /// Iceberg TimeStamp is parsed into TimestampValue.
+  Status ReadTimeStampValue(JNIEnv* env, SlotDescriptor* slot_desc,
+      jobject struct_like_row, Tuple* tuple);
+  /// To obtain a character sequence from JNI the JniUtfCharGuard class is used. Then the
+  /// data has to be copied to the tuple_data_pool, because the JVM releases the reference
+  /// and reclaims the memory area.
+  Status ReadStringValue(JNIEnv* env, SlotDescriptor* slot_desc, jobject struct_like_row,
+      Tuple* tuple, MemPool* tuple_data_pool);
 
  protected:
-  /// Descriptor of tuples read from Iceberg metadata table.
+  /// TupleDescriptor received from the ScanNode.
   const TupleDescriptor* tuple_desc_;
 
   /// The name of the metadata table which has to match the MetadataTableType enum.
-  /// The validity of this name should be done by the frontend.
+  /// The validity of this name should be veified by the frontend.
   const string* metadata_table_name_;
 
   /// Iceberg metadata table object that is created by this scanner.
@@ -150,7 +162,6 @@ class IcebergMetadataTableScanner {
 
   /// Tuple index in tuple row.
   int tuple_idx_;
-
 };
 
 }

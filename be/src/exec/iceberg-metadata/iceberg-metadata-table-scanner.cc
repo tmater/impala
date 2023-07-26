@@ -19,6 +19,7 @@
 #include "exec/iceberg-metadata/iceberg-metadata-table-scanner.h"
 #include "runtime/timestamp-value.inline.h"
 #include "util/jni-util.h"
+#include "runtime/runtime-state.h"
 
 namespace impala {
 
@@ -72,13 +73,12 @@ Status IcebergMetadataTableScanner::Init(JNIEnv* env) {
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
       "java/lang/CharSequence", &java_char_sequence_cl_));
 
-  // Method ids
+  // Method ids:
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, fe_iceberg_table_cl_, "getIcebergApiTable",
       "()Lorg/apache/iceberg/Table;", &fe_iceberg_table_get_iceberg_api_table_));
   RETURN_IF_ERROR(JniUtil::GetStaticMethodID(env, iceberg_metadata_table_utils_cl_,
-      "createMetadataTableInstance",
-      "(Lorg/apache/iceberg/Table;Lorg/apache/iceberg/MetadataTableType;)"
-          "Lorg/apache/iceberg/Table;",
+      "createMetadataTableInstance", "(Lorg/apache/iceberg/Table;Lorg/apache/iceberg/"
+          "MetadataTableType;)Lorg/apache/iceberg/Table;",
       &iceberg_metadata_table_utils_create_metadata_table_instance_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_api_table_cl_, "newScan",
       "()Lorg/apache/iceberg/TableScan;", &iceberg_table_new_scan_));
@@ -125,16 +125,24 @@ Status IcebergMetadataTableScanner::Prepare(JNIEnv* env, jobject* fe_table) {
 Status IcebergMetadataTableScanner::CreateJIcebergMetadataTable(JNIEnv* env,
     jobject* jtable) {
   DCHECK(jtable != NULL);
+  // FeIcebergTable.getIcebergApiTable()
   jobject jiceberg_api_table = env->CallObjectMethod(*jtable,
       fe_iceberg_table_get_iceberg_api_table_);
+  RETURN_ERROR_IF_EXC(env);
+  // Get the MetadataTableType enum's field
   jfieldID metadata_table_type_field = env->GetStaticFieldID(
       iceberg_metadata_table_type_cl_, metadata_table_name_->c_str(),
       "Lorg/apache/iceberg/MetadataTableType;");
+  RETURN_ERROR_IF_EXC(env);
+  // Get the object of MetadataTableType enum field
   jobject metadata_table_type_object = env->GetStaticObjectField(
       iceberg_metadata_table_type_cl_, metadata_table_type_field);
+  RETURN_ERROR_IF_EXC(env);
+  // org.apache.iceberg.Table
   jobject metadata_table = env->CallStaticObjectMethod(iceberg_metadata_table_type_cl_,
       iceberg_metadata_table_utils_create_metadata_table_instance_, jiceberg_api_table,
       metadata_table_type_object);
+  RETURN_ERROR_IF_EXC(env);
   RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, metadata_table, jmetadata_table_));
   return Status::OK();
 }
@@ -142,9 +150,11 @@ Status IcebergMetadataTableScanner::CreateJIcebergMetadataTable(JNIEnv* env,
 Status IcebergMetadataTableScanner::ScanMetadataTable(JNIEnv* env) {
   // metadataTable.newScan();
   jobject scan =  env->CallObjectMethod(*jmetadata_table_, iceberg_table_new_scan_);
+  RETURN_ERROR_IF_EXC(env);
   // scan.planFiles()
   jobject file_scan_task_iterable = env->CallObjectMethod(scan,
       iceberg_table_scan_plan_files_);
+  RETURN_ERROR_IF_EXC(env);
   RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, file_scan_task_iterable,
       &file_scan_task_iterable_));
   // scan.planFiles().iterator()
@@ -181,9 +191,21 @@ Status IcebergMetadataTableScanner::CreateJAccessors(JNIEnv* env) {
 
 Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch,
     RuntimeState* state, bool* eos) {
+  // TODO: DCHECK/TIMERS
+  RETURN_IF_CANCELLED(state);
+  // Allocate buffer for RowBatch and init the tuple
+  uint8_t* tuple_buffer;
+  int64_t tuple_buffer_size;
+  RETURN_IF_ERROR(row_batch->ResizeAndAllocateTupleBuffer(state, &tuple_buffer_size,
+      &tuple_buffer));
+  Tuple* tuple = reinterpret_cast<Tuple*>(tuple_buffer);
+  tuple->Init(tuple_buffer_size);
+
+  // file_scan_task_iterator.hasNext()
   while(env->CallBooleanMethod(file_scan_task_iterator_,
       iceberg_closeable_iterator_has_next_)) {
     RETURN_ERROR_IF_EXC(env);
+    // fileScanTaskIterator.next()
     jobject data_task = env->CallObjectMethod(file_scan_task_iterator_,
         iceberg_closeable_iterator_next_);
     RETURN_ERROR_IF_EXC(env);
@@ -196,51 +218,28 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch,
         iceberg_closable_iterable_iterator_);
     RETURN_ERROR_IF_EXC(env);
     // data_rows_iterator.hasNext()
-    bool committed = true;
     while(env->CallBooleanMethod(data_rows_iterator,
         iceberg_closeable_iterator_has_next_)) {
       RETURN_ERROR_IF_EXC(env);
       if (row_batch->AtCapacity()) {
         return Status::OK();
       }
-      uint8_t* tuple_buffer;
-      int64_t tuple_buffer_size;
-      TupleRow* row;
-      Tuple* tuple;
-      if (committed) {
-        RETURN_IF_ERROR(row_batch->ResizeAndAllocateTupleBuffer(state, &tuple_buffer_size,
-            &tuple_buffer));
-        tuple = reinterpret_cast<Tuple*>(tuple_buffer);
-        tuple->Init(tuple_buffer_size);
-        int row_idx = row_batch->AddRow();
-        row = row_batch->GetRow(row_idx);
-        row->SetTuple(tuple_idx_, tuple);
-      }
+      int row_idx = row_batch->AddRow();
+      TupleRow* tuple_row = row_batch->GetRow(row_idx);
+      tuple_row->SetTuple(tuple_idx_, tuple);
+      // data_rows_iterator.next()
       jobject struct_like_row = env->CallObjectMethod(data_rows_iterator,
           iceberg_closeable_iterator_next_);
-      RETURN_IF_ERROR(GetRow(env, struct_like_row, tuple, state, row_batch->tuple_data_pool()));
-      Tuple* before_eval = row->GetTuple(0);
-      int64_t* before_eval_pslot = before_eval->GetBigIntSlot(24);
-      int64_t* before_eval_sslot = before_eval->GetBigIntSlot(16);
-      LOG(INFO) << "TMATE: Before eval conjunct: " << " parent_slot: " << *reinterpret_cast<int64_t*>(before_eval_pslot);
-      LOG(INFO) << "TMATE: Before eval conjunct: " << " parent_slot null: " << *reinterpret_cast<int64_t*>(before_eval_sslot);
-      LOG(INFO) << "TMATE: Before eval conjunct: " << " snapshotid_slot: " << *reinterpret_cast<int64_t*>(before_eval_sslot);
-
-      std::string ss;
-      LOG(INFO) << "TMATE: conjunct_evals_size: " << conjunct_evals_.size();
-      if (conjunct_evals_.size() > 0) {
-        conjunct_evals_[0]->PrintValue(before_eval, &ss);
-      }
-      LOG(INFO) << "TMATE: conjunct: " << ss;
-      if (ExecNode::EvalConjuncts(conjunct_evals_.data(), conjunct_evals_.size(), row)) {
-        LOG(INFO) << "TMATE: After eval conjunct: " << " parent_slot: " << *reinterpret_cast<int64_t*>(before_eval_pslot);
-        LOG(INFO) << "TMATE: After eval conjunct: " << " snapshotid_slot: " << *reinterpret_cast<int64_t*>(before_eval_sslot);
+      RETURN_ERROR_IF_EXC(env);
+      // Translate a StructLikeRow from Iceberg to Tuple
+      RETURN_IF_ERROR(MaterializeNextRow(env, struct_like_row, tuple, state, row_batch->tuple_data_pool()));
+      // Evaluate conjuncts on this tuple row
+      if (ExecNode::EvalConjuncts(conjunct_evals_.data(), conjunct_evals_.size(), tuple_row)) {
         row_batch->CommitLastRow();
-        committed = true;
+        tuple = reinterpret_cast<Tuple*>(
+            reinterpret_cast<uint8_t*>(tuple) + tuple_desc_->byte_size());
       } else {
         Tuple::ClearNullBits(tuple, tuple_desc_->null_bytes_offset(), tuple_desc_->num_null_bytes());
-        // row_batch->ClearRow(row);
-        committed = false;
       }
     }
   }
@@ -248,37 +247,38 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch,
   return Status::OK();
 }
 
-Status IcebergMetadataTableScanner::GetRow(JNIEnv* env, jobject struct_like_row,
+Status IcebergMetadataTableScanner::MaterializeNextRow(JNIEnv* env, jobject struct_like_row,
     Tuple* tuple, RuntimeState* state, MemPool* tuple_data_pool) {
   for (SlotDescriptor* slot_desc: tuple_desc_->slots()) {
-    LOG(INFO) << "TMATE: slot type: " << slot_desc->type().type << " tuple_offset: " << slot_desc->tuple_offset() << " slot_id: " << slot_desc->id();
     switch (slot_desc->type().type) {
       case TYPE_BOOLEAN: { // java.lang.Boolean
-        RETURN_IF_ERROR(ReadBooleanValue(env, tuple, struct_like_row, slot_desc));
+        RETURN_IF_ERROR(ReadBooleanValue(env, slot_desc, struct_like_row, tuple));
         break;
       } case TYPE_INT: { // java.lang.Integer
-        RETURN_IF_ERROR(ReadIntValue(env, tuple, struct_like_row, slot_desc));
+        RETURN_IF_ERROR(ReadIntValue(env, slot_desc, struct_like_row, tuple));
         break;
       } case TYPE_BIGINT: { // java.lang.Long
-        RETURN_IF_ERROR(ReadLongValue(env, tuple, struct_like_row, slot_desc));
+        RETURN_IF_ERROR(ReadLongValue(env, slot_desc, struct_like_row, tuple));
         break;
       } case TYPE_TIMESTAMP: { // org.apache.iceberg.types.TimestampType
-        RETURN_IF_ERROR(ReadTimeStampValue(env, tuple, struct_like_row, slot_desc));
+        RETURN_IF_ERROR(ReadTimeStampValue(env, slot_desc, struct_like_row, tuple));
         break;
       } case TYPE_STRING: { // java.lang.String
-        RETURN_IF_ERROR(ReadStringValue(env, tuple, struct_like_row, slot_desc, tuple_data_pool));
+        RETURN_IF_ERROR(ReadStringValue(env, slot_desc, struct_like_row, tuple, tuple_data_pool));
         break;
       }
       default:
-        LOG(INFO) << "Skipping unsupported type: " << slot_desc->type().type;
+        // Skip the unsupported type and set it to NULL
+        tuple->SetNull(slot_desc->null_indicator_offset());
+        LOG(INFO) << "Skipping unsupported column type: " << slot_desc->type().type;
     }
   }
   return Status::OK();
 }
 
 // HISTORY
-Status IcebergMetadataTableScanner::ReadBooleanValue(JNIEnv* env, Tuple* tuple,
-    jobject struct_like_row, SlotDescriptor* slot_desc) {
+Status IcebergMetadataTableScanner::ReadBooleanValue(JNIEnv* env,
+    SlotDescriptor* slot_desc, jobject struct_like_row, Tuple* tuple) {
   jobject accessed_value = env->CallObjectMethod(jaccessors_[slot_desc->col_pos()],
       iceberg_accessor_get_, struct_like_row);
   RETURN_ERROR_IF_EXC(env);
@@ -287,15 +287,14 @@ Status IcebergMetadataTableScanner::ReadBooleanValue(JNIEnv* env, Tuple* tuple,
     return Status::OK();
   }
   jboolean result = env->CallBooleanMethod(accessed_value, boolean_value_);
-  LOG(INFO) << "TMATE: result boolean: " << result;
   void* slot = tuple->GetSlot(slot_desc->tuple_offset());
   *reinterpret_cast<uint8_t*>(slot) = reinterpret_cast<uint8_t>(result);
   return Status::OK();
 }
 
 // ENTRIES
-Status IcebergMetadataTableScanner::ReadIntValue(JNIEnv* env, Tuple* tuple,
-    jobject struct_like_row, SlotDescriptor* slot_desc) {
+Status IcebergMetadataTableScanner::ReadIntValue(JNIEnv* env,
+    SlotDescriptor* slot_desc, jobject struct_like_row, Tuple* tuple) {
   jobject accessed_value = env->CallObjectMethod(jaccessors_[slot_desc->col_pos()],
       iceberg_accessor_get_, struct_like_row);
   RETURN_ERROR_IF_EXC(env);
@@ -304,7 +303,6 @@ Status IcebergMetadataTableScanner::ReadIntValue(JNIEnv* env, Tuple* tuple,
     return Status::OK();
   }
   jint result = env->CallIntMethod(accessed_value, int_value_);
-  LOG(INFO) << "TMATE: result int: " << result;
   RETURN_ERROR_IF_EXC(env);
   void* slot = tuple->GetSlot(slot_desc->tuple_offset());
   *reinterpret_cast<int64_t*>(slot) = reinterpret_cast<int32_t>(result);
@@ -312,8 +310,8 @@ Status IcebergMetadataTableScanner::ReadIntValue(JNIEnv* env, Tuple* tuple,
 }
 
 // HISTORY
-Status IcebergMetadataTableScanner::ReadLongValue(JNIEnv* env, Tuple* tuple,
-    jobject struct_like_row, SlotDescriptor* slot_desc) {
+Status IcebergMetadataTableScanner::ReadLongValue(JNIEnv* env,
+    SlotDescriptor* slot_desc, jobject struct_like_row, Tuple* tuple) {
   jobject accessed_value = env->CallObjectMethod(jaccessors_[slot_desc->col_pos()],
       iceberg_accessor_get_, struct_like_row);
   RETURN_ERROR_IF_EXC(env);
@@ -322,7 +320,6 @@ Status IcebergMetadataTableScanner::ReadLongValue(JNIEnv* env, Tuple* tuple,
     return Status::OK();
   }
   jlong result = env->CallLongMethod(accessed_value, long_value_);
-  LOG(INFO) << "TMATE: result long: " << result;
   RETURN_ERROR_IF_EXC(env);
   void* slot = tuple->GetSlot(slot_desc->tuple_offset());
   *reinterpret_cast<int64_t*>(slot) = reinterpret_cast<int64_t>(result);
@@ -330,8 +327,8 @@ Status IcebergMetadataTableScanner::ReadLongValue(JNIEnv* env, Tuple* tuple,
 }
 
 // HISTORY
-Status IcebergMetadataTableScanner::ReadTimeStampValue(JNIEnv* env, Tuple* tuple,
-    jobject struct_like_row, SlotDescriptor* slot_desc) {
+Status IcebergMetadataTableScanner::ReadTimeStampValue(JNIEnv* env,
+    SlotDescriptor* slot_desc, jobject struct_like_row, Tuple* tuple) {
   jobject accessed_value = env->CallObjectMethod(jaccessors_[slot_desc->col_pos()],
       iceberg_accessor_get_, struct_like_row);
   RETURN_ERROR_IF_EXC(env);
@@ -342,13 +339,15 @@ Status IcebergMetadataTableScanner::ReadTimeStampValue(JNIEnv* env, Tuple* tuple
   jlong result = env->CallLongMethod(accessed_value, long_value_);
   RETURN_ERROR_IF_EXC(env);
   void* slot = tuple->GetSlot(slot_desc->tuple_offset());
-  *reinterpret_cast<TimestampValue*>(slot) = TimestampValue::FromUnixTimeMicros(result, UTCPTR);
+  *reinterpret_cast<TimestampValue*>(slot) = TimestampValue::FromUnixTimeMicros(result,
+      UTCPTR);
   return Status::OK();
 }
 
 // SNAPSHOTS
-Status IcebergMetadataTableScanner::ReadStringValue(JNIEnv* env, Tuple* tuple,
-    jobject struct_like_row, SlotDescriptor* slot_desc, MemPool* tuple_data_pool) {
+Status IcebergMetadataTableScanner::ReadStringValue(JNIEnv* env,
+    SlotDescriptor* slot_desc, jobject struct_like_row, Tuple* tuple,
+    MemPool* tuple_data_pool) {
   jobject accessed_value = env->CallObjectMethod(jaccessors_[slot_desc->col_pos()],
       iceberg_accessor_get_, struct_like_row);
   RETURN_ERROR_IF_EXC(env);
@@ -360,8 +359,6 @@ Status IcebergMetadataTableScanner::ReadStringValue(JNIEnv* env, Tuple* tuple,
   jstring jstr = (jstring)result;
   JniUtfCharGuard msg_str_guard;
   RETURN_IF_ERROR(JniUtfCharGuard::create(env, jstr, &msg_str_guard));
-
-  LOG(INFO) << "TMATE: " << msg_str_guard.get() << " length: " << strlen(msg_str_guard.get());
   RETURN_ERROR_IF_EXC(env);
 
   StringValue str;

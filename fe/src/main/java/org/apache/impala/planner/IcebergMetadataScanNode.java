@@ -21,8 +21,8 @@ import java.util.List;
 
 import org.apache.impala.analysis.Analyzer;
 import org.apache.impala.analysis.Expr;
-import org.apache.impala.analysis.IcebergMetadataTableRef;
 import org.apache.impala.analysis.TableRef;
+import org.apache.impala.catalog.iceberg.IcebergMetadataTable;
 import org.apache.impala.common.ImpalaException;
 import org.apache.impala.thrift.TExplainLevel;
 import org.apache.impala.thrift.TIcebergMetadataScanNode;
@@ -45,7 +45,7 @@ public class IcebergMetadataScanNode extends ScanNode {
   protected IcebergMetadataScanNode(PlanNodeId id, List<Expr> conjuncts, TableRef tblRef) {
     super(id, tblRef.getDesc(), "SCAN ICEBERG METADATA");
     conjuncts_ = conjuncts;
-    metadataTableName_ = ((IcebergMetadataTableRef)tblRef).getMetadataTableName();
+    metadataTableName_ = ((IcebergMetadataTable)tblRef.getTable()).getMetadataTableName();
   }
 
   @Override
@@ -57,6 +57,8 @@ public class IcebergMetadataScanNode extends ScanNode {
     analyzer.materializeSlots(conjuncts_);
     computeMemLayout(analyzer);
     computeStats(analyzer);
+    numInstances_ = 1;
+    numNodes_ = 1;
   }
 
   @Override
@@ -85,6 +87,8 @@ public class IcebergMetadataScanNode extends ScanNode {
     msg.iceberg_scan_metadata_node.table_name =
         new TTableName(desc_.getTableName().getDb(), desc_.getTableName().getTbl());
     msg.iceberg_scan_metadata_node.metadata_table_name = metadataTableName_;
+    msg.iceberg_scan_metadata_node.tuple_id = desc_.getId().asInt();
+    LOG.info("TMATE: " + msg.toString());
   }
 
   @Override

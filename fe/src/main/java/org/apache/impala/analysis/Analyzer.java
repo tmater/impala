@@ -1384,6 +1384,7 @@ public class Analyzer {
       // Paths rooted at all of the unique registered tuple descriptors.
       for (TableRef tblRef: tableRefMap_.values()) {
         if (tblRef.isHidden()) continue;
+        // TMATE: this is where the new candidate is incorrect for slots in where clauses
         candidates.add(new Path(tblRef.getDesc(), rawPath));
       }
     } else {

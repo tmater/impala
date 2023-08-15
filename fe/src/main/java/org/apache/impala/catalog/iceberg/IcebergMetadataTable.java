@@ -46,8 +46,7 @@ import com.google.common.base.Preconditions;
  * table object based on the Iceberg API.
  */
 public class IcebergMetadataTable extends VirtualTable {
-  private final static Logger LOG = LoggerFactory.getLogger(
-      IcebergMetadataTable.class);
+  private final static Logger LOG = LoggerFactory.getLogger(IcebergMetadataTable.class);
 
   private FeIcebergTable baseTable_;
   private String metadataTableName_;

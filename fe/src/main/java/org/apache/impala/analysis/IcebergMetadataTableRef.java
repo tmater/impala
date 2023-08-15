@@ -39,11 +39,11 @@ public class IcebergMetadataTableRef extends TableRef {
     resolvedPath_ = resolvedPath;
     IcebergMetadataTable iceMTbl = (IcebergMetadataTable)resolvedPath.getRootTable();
     FeIcebergTable iceTbl = iceMTbl.getBaseTable();
+    metadataTableName_ = iceMTbl.getMetadataTableName();
     if (hasExplicitAlias()) return;
     aliases_ = new String[] {
       iceTbl.getTableName().toString().toLowerCase(),
       iceTbl.getName().toLowerCase()};
-    metadataTableName_ = iceMTbl.getMetadataTableName();
   }
 
   public String getMetadataTableName() {
@@ -56,8 +56,12 @@ public class IcebergMetadataTableRef extends TableRef {
     IcebergMetadataTable rootTable = (IcebergMetadataTable)resolvedPath_.getRootTable();
     FeTable iceRootTable = rootTable.getBaseTable();
     analyzer.registerAuthAndAuditEvent(iceRootTable, priv_, requireGrantOption_);
+    analyzeTimeTravel(analyzer);
     desc_ = analyzer.registerTableRef(this);
+    Analyzer.checkTableCapability(getTable(), Analyzer.OperationType.READ);
     isAnalyzed_ = true;
+    analyzeHints(analyzer);
+    analyzeJoin(analyzer);
   }
 
 }

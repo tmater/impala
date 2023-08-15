@@ -69,45 +69,46 @@ class IcebergMetadataTableScanner {
 
  private:
   /// Global class references created with JniUtil.
-  inline static jclass fe_iceberg_table_cl_ = NULL;  // org.apache.impala.catalog.FeIcebergTable
-  inline static jclass iceberg_api_table_cl_; // org.apache.iceberg.Table
-  inline static jclass iceberg_metadata_table_utils_cl_;
-  inline static jclass iceberg_table_scan_cl_;
-  inline static jclass iceberg_metadata_table_type_cl_;
-  inline static jclass iceberg_scan_cl_;
-  inline static jclass iceberg_file_scan_task_cl_;
-  inline static jclass iceberg_closeable_iterable_cl_;
-  inline static jclass iceberg_closeable_iterator_cl_;
-  inline static jclass iceberg_data_task_cl_;
-  inline static jclass iceberg_struct_like_cl_;
-  inline static jclass iceberg_accessor_cl_;
-  inline static jclass iceberg_schema_cl_;
-  inline static jclass iceberg_nested_field_cl_;
-  inline static jclass list_cl_;
-  inline static jclass java_boolean_cl_;
-  inline static jclass java_int_cl_;
-  inline static jclass java_long_cl_;
-  inline static jclass java_char_sequence_cl_;
+  inline static jclass fe_iceberg_table_cl_ = nullptr;
+  inline static jclass iceberg_api_table_cl_ = nullptr;
+  inline static jclass iceberg_metadata_table_utils_cl_ = nullptr;
+  inline static jclass iceberg_table_scan_cl_ = nullptr;
+  inline static jclass iceberg_metadata_table_type_cl_ = nullptr;
+  inline static jclass iceberg_scan_cl_ = nullptr;
+  inline static jclass iceberg_file_scan_task_cl_ = nullptr;
+  inline static jclass iceberg_closeable_iterable_cl_ = nullptr;
+  inline static jclass iceberg_closeable_iterator_cl_ = nullptr;
+  inline static jclass iceberg_data_task_cl_ = nullptr;
+  inline static jclass iceberg_struct_like_cl_ = nullptr;
+  inline static jclass iceberg_accessor_cl_ = nullptr;
+  inline static jclass iceberg_schema_cl_ = nullptr;
+  inline static jclass iceberg_nested_field_cl_ = nullptr;
+  inline static jclass list_cl_ = nullptr;
+  inline static jclass java_boolean_cl_ = nullptr;
+  inline static jclass java_int_cl_ = nullptr;
+  inline static jclass java_long_cl_ = nullptr;
+  inline static jclass java_char_sequence_cl_ = nullptr;
 
   /// Method references references created with JniUtil.
-  inline static jmethodID fe_iceberg_table_get_iceberg_api_table_;
-  inline static jmethodID iceberg_table_new_scan_;
-  inline static jmethodID iceberg_metadata_table_utils_create_metadata_table_instance_;
-  inline static jmethodID iceberg_table_scan_plan_files_;
-  inline static jmethodID iceberg_closable_iterable_iterator_;
-  inline static jmethodID iceberg_closeable_iterator_has_next_;
-  inline static jmethodID iceberg_closeable_iterator_next_;
-  inline static jmethodID iceberg_data_task_rows_;
-  inline static jmethodID iceberg_table_schema_;
-  inline static jmethodID iceberg_schema_columns_;
-  inline static jmethodID iceberg_nested_field_field_id_;
-  inline static jmethodID iceberg_schema_accessor_for_field_;
-  inline static jmethodID iceberg_accessor_get_;
-  inline static jmethodID list_get_;
-  inline static jmethodID boolean_value_;
-  inline static jmethodID int_value_;
-  inline static jmethodID long_value_;
-  inline static jmethodID char_sequence_value_;
+  inline static jmethodID fe_iceberg_table_get_iceberg_api_table_ = nullptr;
+  inline static jmethodID iceberg_table_new_scan_ = nullptr;
+  inline static jmethodID iceberg_metadata_table_utils_create_metadata_table_instance_ =
+      nullptr;
+  inline static jmethodID iceberg_table_scan_plan_files_ = nullptr;
+  inline static jmethodID iceberg_closable_iterable_iterator_ = nullptr;
+  inline static jmethodID iceberg_closeable_iterator_has_next_ = nullptr;
+  inline static jmethodID iceberg_closeable_iterator_next_ = nullptr;
+  inline static jmethodID iceberg_data_task_rows_ = nullptr;
+  inline static jmethodID iceberg_table_schema_ = nullptr;
+  inline static jmethodID iceberg_schema_columns_ = nullptr;
+  inline static jmethodID iceberg_nested_field_field_id_ = nullptr;
+  inline static jmethodID iceberg_schema_accessor_for_field_ = nullptr;
+  inline static jmethodID iceberg_accessor_get_ = nullptr;
+  inline static jmethodID list_get_ = nullptr;
+  inline static jmethodID boolean_value_ = nullptr;
+  inline static jmethodID int_value_ = nullptr;
+  inline static jmethodID long_value_ = nullptr;
+  inline static jmethodID char_sequence_value_ = nullptr;
 
   /// Getting enum objects are not straigthforward calls: enum -> field -> object
   Status CreateJIcebergMetadataTable(JNIEnv* env, jobject* jtable);
@@ -151,6 +152,9 @@ class IcebergMetadataTableScanner {
 
   std::vector<ScalarExprEvaluator*> conjunct_evals_;
 
+  /// Iceberg metadata scan specific counters
+  RuntimeProfile::Counter* scan_setup_timer_;
+
   /// Accessor object for the scan result. These are in the same order as the slot
   std::unordered_map<int, jobject> jaccessors_;
 
@@ -162,6 +166,9 @@ class IcebergMetadataTableScanner {
 
   /// Tuple index in tuple row.
   int tuple_idx_;
+
+  // 
+  int64_t num_rows_ = 0;
 };
 
 }

@@ -44,9 +44,11 @@ Status IcebergMetadataScanPlanNode::CreateExecNode(
 IcebergMetadataScanNode::IcebergMetadataScanNode(ObjectPool* pool,
     const IcebergMetadataScanPlanNode& pnode, const DescriptorTbl& descs)
   : ScanNode(pool, pnode, descs),
-    tuple_id_(pnode.tnode_->hdfs_scan_node.tuple_id),
+    tuple_id_(pnode.tnode_->iceberg_scan_metadata_node.tuple_id),
     table_name_(new TTableName(pnode.tnode_->iceberg_scan_metadata_node.table_name)) {
-    metadata_table_name_ = new string(pnode.tnode_->iceberg_scan_metadata_node.metadata_table_name.c_str());
+    LOG(INFO) << "TMATE: " << pnode.tnode_;
+    metadata_table_name_ = new string(
+        pnode.tnode_->iceberg_scan_metadata_node.metadata_table_name.c_str());
 };
 
 Status IcebergMetadataScanNode::Prepare(RuntimeState* state) {
@@ -56,12 +58,15 @@ Status IcebergMetadataScanNode::Prepare(RuntimeState* state) {
   }
   RETURN_IF_ERROR(ScanNode::Prepare(state));
 
+
   tuple_desc_ = state->desc_tbl().GetTupleDescriptor(tuple_id_);
   if (tuple_desc_ == NULL) {
     // TODO: make sure we print all available diagnostic output to our error log
     return Status("Failed to get tuple descriptor.");
   }
-
+  if (conjuncts_.size() > 0) { 
+    LOG(INFO) << "TMATE: conjunct:" << conjuncts_[0]->DebugString();
+  }
   iceberg_metadata_scanner_.reset(new IcebergMetadataTableScanner(tuple_desc_,
       metadata_table_name_, conjunct_evals_));
   RETURN_IF_ERROR(iceberg_metadata_scanner_->Init(env));
@@ -93,7 +98,9 @@ Status IcebergMetadataScanNode::GetNext(RuntimeState* state, RowBatch* row_batch
     if (row_batch->AtCapacity() || *eos) {
       return Status::OK();
     }
+    LOG(INFO) << "TMATE: " << "NODE: GETNEXT";
     RETURN_IF_ERROR(iceberg_metadata_scanner_->GetNext(env, row_batch, state, eos));
+    IncrementNumRowsReturned(row_batch->num_rows());
   }
   return Status::OK();
 }

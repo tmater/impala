@@ -682,10 +682,12 @@ struct TCardinalityCheckNode {
 
 // Defines the additional data that is needed by the IcebergMetadtatScanNode.
 struct TIcebergMetadataScanNode {
+  1: required Types.TTupleId tuple_id
+
   // Name of the FeIcebergTable that will be used for the metadata table scan.
-  1: required CatalogObjects.TTableName table_name
+  2: required CatalogObjects.TTableName table_name
   // The metadata table name specifies which metadata table has to be scanned.
-  2: required string metadata_table_name;
+  3: required string metadata_table_name;
 }
 
 // See PipelineMembership in the frontend for details.

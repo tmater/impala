@@ -169,6 +169,7 @@ Status Scheduler::ComputeScanRangeAssignment(
       const TPlanFragment& fragment = state->GetContainingFragment(node_id);
       bool exec_at_coord = (fragment.partition.type == TPartitionType::UNPARTITIONED);
       DCHECK(executor_config.group.NumExecutors() > 0 || exec_at_coord);
+      LOG(INFO) << "TMATE: exec_at_coord: " << exec_at_coord << " node_id: " << node_id;
 
       const TPlanNode& node = state->GetNode(node_id);
       DCHECK_EQ(node.node_id, node_id);

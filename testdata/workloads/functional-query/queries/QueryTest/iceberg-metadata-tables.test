@@ -38,84 +38,84 @@
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.entries;
 ---- RESULTS
-1,3402808861336235366,3,3
-1,6513109975109891247,2,2
-1,7183548199109807016,1,1
-1,6514678214355775093,4,4
+1,8283026816932323050,3,3
+1,9046920472784493998,2,2
+1,8491702501245661704,1,1
+1,7858675898458780516,4,4
 ---- TYPES
 INT,BIGINT,BIGINT,BIGINT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.`files`;
 ---- RESULTS
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/6a42802e7a2f5fb3-89101f9b00000000_2097425411_data.0.parq','PARQUET',0,1,351,'',0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/e34a6712ccf94419-6d413a4d00000000_740167329_data.0.parq','PARQUET',0,1,351,'',0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/664b6781de8d6696-1acc96f400000000_1028080785_data.0.parq','PARQUET',0,1,351,'',0
-1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/delete-624e56c9f78bc318-76b3efa700000000_1597533319_data.0.parq','PARQUET',0,1,1484,'NULL',NULL
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/944a2355e618932f-18f086b600000000_1283312202_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/3d481ed88b2941f0-ea33816200000000_1109948289_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/d64ba652b36f2d76-d075207600000000_883987622_data.0.parq','PARQUET',0,1,351,'',0
+1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/delete-1f43b217940cc094-fedf515600000000_248998721_data.0.parq','PARQUET',0,1,1489,'NULL',NULL
 ---- TYPES
 INT,STRING,STRING,INT,BIGINT,BIGINT,BINARY,INT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.data_files;
 ---- RESULTS
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/6a42802e7a2f5fb3-89101f9b00000000_2097425411_data.0.parq','PARQUET',0,1,351,'',0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/e34a6712ccf94419-6d413a4d00000000_740167329_data.0.parq','PARQUET',0,1,351,'',0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/664b6781de8d6696-1acc96f400000000_1028080785_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/944a2355e618932f-18f086b600000000_1283312202_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/3d481ed88b2941f0-ea33816200000000_1109948289_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/d64ba652b36f2d76-d075207600000000_883987622_data.0.parq','PARQUET',0,1,351,'',0
 ---- TYPES
 INT,STRING,STRING,INT,BIGINT,BIGINT,BINARY,INT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.delete_files;
 ---- RESULTS
-1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/delete-624e56c9f78bc318-76b3efa700000000_1597533319_data.0.parq','PARQUET',0,1,1484,'NULL',NULL
+1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/delete-1f43b217940cc094-fedf515600000000_248998721_data.0.parq','PARQUET',0,1,1489,'NULL',NULL
 ---- TYPES
 INT,STRING,STRING,INT,BIGINT,BIGINT,BINARY,INT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.history;
 ---- RESULTS
-2023-07-21 09:56:55.109000000,7183548199109807016,NULL,true
-2023-07-21 09:56:55.450000000,6513109975109891247,7183548199109807016,true
-2023-07-21 09:56:55.762000000,3402808861336235366,6513109975109891247,true
-2023-07-21 09:56:56.280000000,6514678214355775093,3402808861336235366,true
+2023-08-16 12:18:15.322000000,8491702501245661704,NULL,true
+2023-08-16 12:18:15.523000000,9046920472784493998,8491702501245661704,true
+2023-08-16 12:18:15.919000000,8283026816932323050,9046920472784493998,true
+2023-08-16 12:18:18.584000000,7858675898458780516,8283026816932323050,true
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.metadata_log_entries;
 ---- RESULTS
-2023-07-21 09:56:50.677000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00000-9ddfaef7-9f70-4750-87c6-77267ecbae63.metadata.json',NULL,NULL,NULL
-2023-07-21 09:56:55.122000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00001-52388d45-2d58-4b85-ae06-2b10110a3bc8.metadata.json',7183548199109807016,0,1
-2023-07-21 09:56:55.452000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00002-c055cfe8-4762-4349-a1fd-d163bd23f9c2.metadata.json',6513109975109891247,0,2
-2023-07-21 09:56:55.769000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00003-fba22477-68d3-45d5-94cd-69bb8f2ec5ec.metadata.json',3402808861336235366,0,3
-2023-07-21 09:56:56.290000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00004-2cac6d63-a93f-4c4e-955c-ff758cacdc49.metadata.json',6514678214355775093,0,4
+2023-08-16 12:18:11.061000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00000-0ae98ebd-b200-4381-9d97-1f93954423a9.metadata.json',NULL,NULL,NULL
+2023-08-16 12:18:15.323000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00001-a9e4a8c8-d0af-48d2-a964-5a15523112b1.metadata.json',8491702501245661704,0,1
+2023-08-16 12:18:15.528000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00002-306a0b52-731c-484e-a9fe-47e947f8829e.metadata.json',9046920472784493998,0,2
+2023-08-16 12:18:15.921000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00003-be3fa76d-a486-49c4-89ad-bf7eaba7b2ca.metadata.json',8283026816932323050,0,3
+2023-08-16 12:18:18.589000000,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/00004-a151e7c3-1a45-4f6d-af11-9901a0bce82a.metadata.json',7858675898458780516,0,4
 ---- TYPES
 TIMESTAMP,STRING,BIGINT,INT,BIGINT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.snapshots;
 ---- RESULTS
-2023-07-21 09:56:55.109000000,7183548199109807016,NULL,'append','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-7183548199109807016-1-324cb3a6-248c-4fb3-9924-62a9a8fbbd69.avro'
-2023-07-21 09:56:55.450000000,6513109975109891247,7183548199109807016,'append','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-6513109975109891247-1-bae2a3d5-2faa-42b6-af63-947954d4ba8e.avro'
-2023-07-21 09:56:55.762000000,3402808861336235366,6513109975109891247,'append','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-3402808861336235366-1-5a7d6cc3-6ed6-40dd-8c2b-e0252dcbfcc0.avro'
-2023-07-21 09:56:56.280000000,6514678214355775093,3402808861336235366,'overwrite','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-6514678214355775093-1-87ded59b-86c3-4346-a3a8-285f1611d6b9.avro'
+2023-08-16 12:18:15.322000000,8491702501245661704,NULL,'append','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-8491702501245661704-1-88a39285-529f-41a4-bd69-6d2560fac64e.avro'
+2023-08-16 12:18:15.523000000,9046920472784493998,8491702501245661704,'append','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-9046920472784493998-1-7c952273-c5d6-43d2-bb1b-72fbe1555f25.avro'
+2023-08-16 12:18:15.919000000,8283026816932323050,9046920472784493998,'append','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-8283026816932323050-1-38e5a1bd-5b7f-4eae-9362-16a2de3c575d.avro'
+2023-08-16 12:18:18.584000000,7858675898458780516,8283026816932323050,'overwrite','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-7858675898458780516-1-ef78f8eb-b2b5-41df-a2a0-7944ac3c38da.avro'
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,STRING,STRING
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.refs;
 ---- RESULTS
-'main','BRANCH',6514678214355775093,NULL,NULL,NULL
+'main','BRANCH',7858675898458780516,NULL,NULL,NULL
 ---- TYPES
 STRING,STRING,BIGINT,BIGINT,INT,BIGINT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.manifests;
 ---- RESULTS
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/5a7d6cc3-6ed6-40dd-8c2b-e0252dcbfcc0-m0.avro',6627,0,3402808861336235366,1,0,0,0,0,0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/bae2a3d5-2faa-42b6-af63-947954d4ba8e-m0.avro',6627,0,6513109975109891247,1,0,0,0,0,0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/324cb3a6-248c-4fb3-9924-62a9a8fbbd69-m0.avro',6631,0,7183548199109807016,1,0,0,0,0,0
-1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/87ded59b-86c3-4346-a3a8-285f1611d6b9-m0.avro',6696,0,6514678214355775093,0,0,0,1,0,0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/38e5a1bd-5b7f-4eae-9362-16a2de3c575d-m0.avro',6631,0,8283026816932323050,1,0,0,0,0,0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/7c952273-c5d6-43d2-bb1b-72fbe1555f25-m0.avro',6628,0,9046920472784493998,1,0,0,0,0,0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/88a39285-529f-41a4-bd69-6d2560fac64e-m0.avro',6627,0,8491702501245661704,1,0,0,0,0,0
+1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/ef78f8eb-b2b5-41df-a2a0-7944ac3c38da-m0.avro',6696,0,7858675898458780516,0,0,0,1,0,0
 ---- TYPES
 INT,STRING,BIGINT,INT,BIGINT,INT,INT,INT,INT,INT,INT
 ====
@@ -129,52 +129,52 @@ BIGINT,INT
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.all_data_files;
 ---- RESULTS
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/6a42802e7a2f5fb3-89101f9b00000000_2097425411_data.0.parq','PARQUET',0,1,351,'',0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/e34a6712ccf94419-6d413a4d00000000_740167329_data.0.parq','PARQUET',0,1,351,'',0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/664b6781de8d6696-1acc96f400000000_1028080785_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/3d481ed88b2941f0-ea33816200000000_1109948289_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/944a2355e618932f-18f086b600000000_1283312202_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/d64ba652b36f2d76-d075207600000000_883987622_data.0.parq','PARQUET',0,1,351,'',0
 ---- TYPES
 INT,STRING,STRING,INT,BIGINT,BIGINT,BINARY,INT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.all_delete_files;
 ---- RESULTS
-1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/delete-624e56c9f78bc318-76b3efa700000000_1597533319_data.0.parq','PARQUET',0,1,1484,'NULL',NULL
+1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/delete-1f43b217940cc094-fedf515600000000_248998721_data.0.parq','PARQUET',0,1,1489,'NULL',NULL
 ---- TYPES
 INT,STRING,STRING,INT,BIGINT,BIGINT,BINARY,INT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.all_files;
 ---- RESULTS
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/6a42802e7a2f5fb3-89101f9b00000000_2097425411_data.0.parq','PARQUET',0,1,351,'',0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/e34a6712ccf94419-6d413a4d00000000_740167329_data.0.parq','PARQUET',0,1,351,'',0
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/664b6781de8d6696-1acc96f400000000_1028080785_data.0.parq','PARQUET',0,1,351,'',0
-1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/delete-624e56c9f78bc318-76b3efa700000000_1597533319_data.0.parq','PARQUET',0,1,1484,'NULL',NULL
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/3d481ed88b2941f0-ea33816200000000_1109948289_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/944a2355e618932f-18f086b600000000_1283312202_data.0.parq','PARQUET',0,1,351,'',0
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/d64ba652b36f2d76-d075207600000000_883987622_data.0.parq','PARQUET',0,1,351,'',0
+1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/data/delete-1f43b217940cc094-fedf515600000000_248998721_data.0.parq','PARQUET',0,1,1489,'NULL',NULL
 ---- TYPES
 INT,STRING,STRING,INT,BIGINT,BIGINT,BINARY,INT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.all_manifests;
 ---- RESULTS
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/324cb3a6-248c-4fb3-9924-62a9a8fbbd69-m0.avro',6631,0,7183548199109807016,1,0,0,0,0,0,7183548199109807016
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/bae2a3d5-2faa-42b6-af63-947954d4ba8e-m0.avro',6627,0,6513109975109891247,1,0,0,0,0,0,6513109975109891247
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/324cb3a6-248c-4fb3-9924-62a9a8fbbd69-m0.avro',6631,0,7183548199109807016,1,0,0,0,0,0,6513109975109891247
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/5a7d6cc3-6ed6-40dd-8c2b-e0252dcbfcc0-m0.avro',6627,0,3402808861336235366,1,0,0,0,0,0,3402808861336235366
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/bae2a3d5-2faa-42b6-af63-947954d4ba8e-m0.avro',6627,0,6513109975109891247,1,0,0,0,0,0,3402808861336235366
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/324cb3a6-248c-4fb3-9924-62a9a8fbbd69-m0.avro',6631,0,7183548199109807016,1,0,0,0,0,0,3402808861336235366
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/5a7d6cc3-6ed6-40dd-8c2b-e0252dcbfcc0-m0.avro',6627,0,3402808861336235366,1,0,0,0,0,0,6514678214355775093
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/bae2a3d5-2faa-42b6-af63-947954d4ba8e-m0.avro',6627,0,6513109975109891247,1,0,0,0,0,0,6514678214355775093
-0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/324cb3a6-248c-4fb3-9924-62a9a8fbbd69-m0.avro',6631,0,7183548199109807016,1,0,0,0,0,0,6514678214355775093
-1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/87ded59b-86c3-4346-a3a8-285f1611d6b9-m0.avro',6696,0,6514678214355775093,0,0,0,1,0,0,6514678214355775093
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/38e5a1bd-5b7f-4eae-9362-16a2de3c575d-m0.avro',6631,0,8283026816932323050,1,0,0,0,0,0,7858675898458780516
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/38e5a1bd-5b7f-4eae-9362-16a2de3c575d-m0.avro',6631,0,8283026816932323050,1,0,0,0,0,0,8283026816932323050
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/7c952273-c5d6-43d2-bb1b-72fbe1555f25-m0.avro',6628,0,9046920472784493998,1,0,0,0,0,0,7858675898458780516
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/7c952273-c5d6-43d2-bb1b-72fbe1555f25-m0.avro',6628,0,9046920472784493998,1,0,0,0,0,0,8283026816932323050
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/7c952273-c5d6-43d2-bb1b-72fbe1555f25-m0.avro',6628,0,9046920472784493998,1,0,0,0,0,0,9046920472784493998
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/88a39285-529f-41a4-bd69-6d2560fac64e-m0.avro',6627,0,8491702501245661704,1,0,0,0,0,0,7858675898458780516
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/88a39285-529f-41a4-bd69-6d2560fac64e-m0.avro',6627,0,8491702501245661704,1,0,0,0,0,0,8283026816932323050
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/88a39285-529f-41a4-bd69-6d2560fac64e-m0.avro',6627,0,8491702501245661704,1,0,0,0,0,0,8491702501245661704
+0,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/88a39285-529f-41a4-bd69-6d2560fac64e-m0.avro',6627,0,8491702501245661704,1,0,0,0,0,0,9046920472784493998
+1,'hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/ef78f8eb-b2b5-41df-a2a0-7944ac3c38da-m0.avro',6696,0,7858675898458780516,0,0,0,1,0,0,7858675898458780516
 ---- TYPES
 INT,STRING,BIGINT,INT,BIGINT,INT,INT,INT,INT,INT,INT,BIGINT
 ====
 ---- QUERY
 select * from functional_parquet.iceberg_test_metadata.all_entries;
 ---- RESULTS
-1,3402808861336235366,3,3
-1,6514678214355775093,4,4
-1,6513109975109891247,2,2
-1,7183548199109807016,1,1
+1,7858675898458780516,4,4
+1,8283026816932323050,3,3
+1,8491702501245661704,1,1
+1,9046920472784493998,2,2
 ---- TYPES
 INT,BIGINT,BIGINT,BIGINT
 
@@ -185,20 +185,20 @@ INT,BIGINT,BIGINT,BIGINT
 ---- QUERY
 select snapshot_id from functional_parquet.iceberg_test_metadata.history;
 ---- RESULTS
-7183548199109807016
-6513109975109891247
-3402808861336235366
-6514678214355775093
+7858675898458780516
+8283026816932323050
+8491702501245661704
+9046920472784493998
 ---- TYPES
 BIGINT
 ====
 ---- QUERY
 select snapshot_id, * from functional_parquet.iceberg_test_metadata.history;
 ---- RESULTS
-7183548199109807016,2023-07-21 09:56:55.109000000,7183548199109807016,NULL,true
-6513109975109891247,2023-07-21 09:56:55.450000000,6513109975109891247,7183548199109807016,true
-3402808861336235366,2023-07-21 09:56:55.762000000,3402808861336235366,6513109975109891247,true
-6514678214355775093,2023-07-21 09:56:56.280000000,6514678214355775093,3402808861336235366,true
+7858675898458780516,2023-08-16 12:18:18.584000000,7858675898458780516,8283026816932323050,true
+8283026816932323050,2023-08-16 12:18:15.919000000,8283026816932323050,9046920472784493998,true
+8491702501245661704,2023-08-16 12:18:15.322000000,8491702501245661704,NULL,true
+9046920472784493998,2023-08-16 12:18:15.523000000,9046920472784493998,8491702501245661704,true
 ---- TYPES
 BIGINT,TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 ====
@@ -224,9 +224,9 @@ BIGINT
 ---- QUERY
 # Test BIGINT
 select * from functional_parquet.iceberg_test_metadata.history
-where snapshot_id = 3402808861336235366;
+where snapshot_id = 8283026816932323050;
 ---- RESULTS
-2023-07-21 09:56:55.762000000,3402808861336235366,6513109975109891247,true
+2023-08-16 12:18:15.919000000,8283026816932323050,9046920472784493998,true
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 ====
@@ -235,10 +235,10 @@ TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 select * from functional_parquet.iceberg_test_metadata.history
 where is_current_ancestor = true;
 ---- RESULTS
-2023-07-21 09:56:55.109000000,7183548199109807016,NULL,true
-2023-07-21 09:56:55.450000000,6513109975109891247,7183548199109807016,true
-2023-07-21 09:56:55.762000000,3402808861336235366,6513109975109891247,true
-2023-07-21 09:56:56.280000000,6514678214355775093,3402808861336235366,true
+2023-08-16 12:18:15.322000000,8491702501245661704,NULL,true
+2023-08-16 12:18:15.523000000,9046920472784493998,8491702501245661704,true
+2023-08-16 12:18:15.919000000,8283026816932323050,9046920472784493998,true
+2023-08-16 12:18:18.584000000,7858675898458780516,8283026816932323050,true
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 ====
@@ -247,16 +247,16 @@ TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 select * from functional_parquet.iceberg_test_metadata.snapshots
 where operation = 'overwrite';
 ---- RESULTS
-2023-07-21 09:56:56.280000000,6514678214355775093,3402808861336235366,'overwrite','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-6514678214355775093-1-87ded59b-86c3-4346-a3a8-285f1611d6b9.avro'
+2023-08-16 12:18:18.584000000,7858675898458780516,8283026816932323050,'overwrite','hdfs://localhost:20500/test-warehouse/functional_parquet.db/iceberg_test_metadata/metadata/snap-7858675898458780516-1-ef78f8eb-b2b5-41df-a2a0-7944ac3c38da.avro'
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,STRING,STRING
 ====
 ---- QUERY
 # Test TIMESTAMP
 select * from functional_parquet.iceberg_test_metadata.history
-where made_current_at = cast("2023-07-21 09:56:55.450000000" as timestamp);
+where made_current_at = cast("2023-08-16 12:18:15.919000000" as timestamp);
 ---- RESULTS
-2023-07-21 09:56:55.450000000,6513109975109891247,7183548199109807016,true
+2023-08-16 12:18:15.919000000,8283026816932323050,9046920472784493998,true
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 ====
@@ -265,17 +265,17 @@ TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 select snapshot_id from functional_parquet.iceberg_test_metadata.snapshots
 where operation = 'overwrite';
 ---- RESULTS
-6514678214355775093
+7858675898458780516
 ---- TYPES
 BIGINT
 ====
 ---- QUERY
 # Test an expression rewrite: OR -> IN ()
 select * from functional_parquet.iceberg_test_metadata.history
-where snapshot_id = 3402808861336235366 or snapshot_id = 6513109975109891247;
+where snapshot_id = 9046920472784493998 or snapshot_id = 8283026816932323050;
 ---- RESULTS
-2023-07-21 09:56:55.450000000,6513109975109891247,7183548199109807016,true
-2023-07-21 09:56:55.762000000,3402808861336235366,6513109975109891247,true
+2023-08-16 12:18:15.523000000,9046920472784493998,8491702501245661704,true
+2023-08-16 12:18:15.919000000,8283026816932323050,9046920472784493998,true
 ---- TYPES
 TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 
@@ -287,10 +287,10 @@ TIMESTAMP,BIGINT,BIGINT,BOOLEAN
 select a.snapshot_id, b.snapshot_id from functional_parquet.iceberg_test_metadata.history a
 join functional_parquet.iceberg_test_metadata.history b on a.snapshot_id = b.snapshot_id;
 ---- RESULTS
-7183548199109807016,7183548199109807016
-6513109975109891247,6513109975109891247
-3402808861336235366,3402808861336235366
-6514678214355775093,6514678214355775093
+7858675898458780516,7858675898458780516
+8283026816932323050,8283026816932323050
+8491702501245661704,8491702501245661704
+9046920472784493998,9046920472784493998
 ---- TYPES
 BIGINT,BIGINT
 ====
@@ -298,10 +298,10 @@ BIGINT,BIGINT
 select a.snapshot_id, b.parent_id from functional_parquet.iceberg_test_metadata.history a
 join functional_parquet.iceberg_test_metadata.history b on a.snapshot_id = b.snapshot_id;
 ---- RESULTS
-7183548199109807016,NULL
-6513109975109891247,7183548199109807016
-3402808861336235366,6513109975109891247
-6514678214355775093,3402808861336235366
+7858675898458780516,8283026816932323050
+8283026816932323050,9046920472784493998
+8491702501245661704,NULL
+9046920472784493998,8491702501245661704
 ---- TYPES
 BIGINT,BIGINT
 ====
@@ -321,10 +321,10 @@ BIGINT
 select a.snapshot_id
 from (select * from functional_parquet.iceberg_test_metadata.history) a;
 ---- RESULTS
-7183548199109807016
-6513109975109891247
-3402808861336235366
-6514678214355775093
+7858675898458780516
+8283026816932323050
+8491702501245661704
+9046920472784493998
 ---- TYPES
 BIGINT
 
@@ -336,10 +336,10 @@ BIGINT
 ---- QUERY
 select snapshot_id, summary from functional_parquet.iceberg_test_metadata.snapshots;
 ---- RESULTS
-7183548199109807016,'NULL'
-6513109975109891247,'NULL'
-3402808861336235366,'NULL'
-6514678214355775093,'NULL'
+7858675898458780516,'NULL'
+8283026816932323050,'NULL'
+8491702501245661704,'NULL'
+9046920472784493998,'NULL'
 ---- TYPES
 BIGINT,STRING
 ====

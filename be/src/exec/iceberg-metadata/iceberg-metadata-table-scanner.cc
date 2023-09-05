@@ -199,6 +199,50 @@ Status IcebergMetadataTableScanner::CreateJAccessors(JNIEnv* env) {
   return Status::OK();
 }
 
+// Called 
+Status IcebergMetadataTableScanner::HasNextDataRow(JNIEnv* env, bool* hasNext) {
+  LOG(INFO) << "TMATE: " << data_rows_iterator_;
+  if(data_rows_iterator_ != nullptr && env->CallBooleanMethod(data_rows_iterator_, iceberg_closeable_iterator_has_next_)) {
+    LOG(INFO) << "TMATE";
+    RETURN_ERROR_IF_EXC(env);
+    // EASY: if it has more, return true
+    // RETURN_ERROR_IF_EXC(env);
+    *hasNext = true;
+    return Status::OK();
+  }
+  // MEDIUM: DRI is out of rows, we need to iterate FSTI and Init DRI
+  // Iterate till we find an FSTI with DataRows
+  LOG(INFO) << "TMATE: " << file_scan_task_iterator_;
+  RETURN_ERROR_IF_EXC(env);
+  LOG(INFO) << "TMATE";
+  while ((bool) env->CallBooleanMethod(file_scan_task_iterator_, iceberg_closeable_iterator_has_next_)) {
+    RETURN_ERROR_IF_EXC(env);
+    LOG(INFO) << "TMATE " << file_scan_task_iterator_ << " , " << iceberg_closeable_iterator_next_;
+    jobject data_task = env->CallObjectMethod(file_scan_task_iterator_,
+        iceberg_closeable_iterator_next_);
+    LOG(INFO) << "TMATE: data_task: " << data_task;
+    RETURN_ERROR_IF_EXC(env);
+    LOG(INFO) << "TMATE: " << data_task;
+    jobject data_rows_iterable = env->CallObjectMethod(data_task, iceberg_data_task_rows_);
+    RETURN_ERROR_IF_EXC(env);
+    LOG(INFO) << "TMATE";
+    data_rows_iterator_ = env->CallObjectMethod(data_rows_iterable,
+      iceberg_closable_iterable_iterator_);
+    RETURN_ERROR_IF_EXC(env);
+    LOG(INFO) << "TMATE";
+    // Double check:
+    if(env->CallBooleanMethod(data_rows_iterator_, iceberg_closeable_iterator_has_next_)) {
+      RETURN_ERROR_IF_EXC(env);
+      LOG(INFO) << "TMATE";
+      *hasNext = true;
+      return Status::OK();
+    }
+    LOG(INFO) << "TMATE";
+  }
+  *hasNext = false;
+  return Status::OK();
+}
+
 Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch, bool* eos) {
   RETURN_IF_CANCELLED(state_);
   SCOPED_TIMER(scan_node_->materialize_tuple_timer());
@@ -209,56 +253,48 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch, bo
       &tuple_buffer));
   Tuple* tuple = reinterpret_cast<Tuple*>(tuple_buffer);
   tuple->Init(tuple_buffer_size);
-
-  // file_scan_task_iterator.hasNext()
-  while(env->CallBooleanMethod(file_scan_task_iterator_,
-      iceberg_closeable_iterator_has_next_)) {
+  LOG(INFO) << "TMATE";
+  bool hasNext = true;
+  while(hasNext) {
+    RETURN_IF_ERROR(HasNextDataRow(env, &hasNext));
+    LOG(INFO) << "TMATE";
     RETURN_ERROR_IF_EXC(env);
-    // fileScanTaskIterator.next()
-    jobject data_task = env->CallObjectMethod(file_scan_task_iterator_,
+    if (row_batch->AtCapacity() || !hasNext) {
+      if (!hasNext) {
+        *eos = true;
+      }
+      LOG(INFO) << "TMATE: rowbatch at capacity, eos:" << *eos << " hasNext: " << hasNext;
+      return Status::OK();
+    }
+
+    int row_idx = row_batch->AddRow();
+    TupleRow* tuple_row = row_batch->GetRow(row_idx);
+    tuple_row->SetTuple(tuple_idx_, tuple);
+    // dataTaskIterator.next()
+    LOG(INFO) << "TMATE";
+    jobject struct_like_row = env->CallObjectMethod(data_rows_iterator_,
         iceberg_closeable_iterator_next_);
+    LOG(INFO) << "TMATE";
     RETURN_ERROR_IF_EXC(env);
-    // dataTask.rows()
-    jobject data_rows_iterable = env->CallObjectMethod(data_task,
-        iceberg_data_task_rows_);
-    RETURN_ERROR_IF_EXC(env);
-    // dataTask.rows().iterator()
-    jobject data_rows_iterator = env->CallObjectMethod(data_rows_iterable,
-        iceberg_closable_iterable_iterator_);
-    RETURN_ERROR_IF_EXC(env);
-    // dataTaskIterator.hasNext()
-    while(env->CallBooleanMethod(data_rows_iterator,
-        iceberg_closeable_iterator_has_next_)) {
-      RETURN_ERROR_IF_EXC(env);
-      if (row_batch->AtCapacity()) {
-        return Status::OK();
-      }
+    // Translate a StructLikeRow from Iceberg to Tuple
+    RETURN_IF_ERROR(MaterializeNextRow(env, struct_like_row, tuple,
+        row_batch->tuple_data_pool()));
+    LOG(INFO) << "TMATE";
+    COUNTER_ADD(scan_node_->rows_read_counter(), 1);
 
-      int row_idx = row_batch->AddRow();
-      TupleRow* tuple_row = row_batch->GetRow(row_idx);
-      tuple_row->SetTuple(tuple_idx_, tuple);
-      // dataTaskIterator.next()
-      jobject struct_like_row = env->CallObjectMethod(data_rows_iterator,
-          iceberg_closeable_iterator_next_);
-      RETURN_ERROR_IF_EXC(env);
-      // Translate a StructLikeRow from Iceberg to Tuple
-      RETURN_IF_ERROR(MaterializeNextRow(env, struct_like_row, tuple,
-          row_batch->tuple_data_pool()));
-      COUNTER_ADD(scan_node_->rows_read_counter(), 1);
-
-      // Evaluate conjuncts on this tuple row
-      if (ExecNode::EvalConjuncts(scan_node_->conjunct_evals().data(),
-          scan_node_->conjunct_evals().size(), tuple_row)) {
-        row_batch->CommitLastRow();
-        tuple = reinterpret_cast<Tuple*>(
-            reinterpret_cast<uint8_t*>(tuple) + tuple_desc_->byte_size());
-      } else {
-        // Reset the null bits, everyhing else will be overwritten
-        Tuple::ClearNullBits(tuple, tuple_desc_->null_bytes_offset(),
-            tuple_desc_->num_null_bytes());
-      }
+    // Evaluate conjuncts on this tuple row
+    if (ExecNode::EvalConjuncts(scan_node_->conjunct_evals().data(),
+        scan_node_->conjunct_evals().size(), tuple_row)) {
+      row_batch->CommitLastRow();
+      tuple = reinterpret_cast<Tuple*>(
+          reinterpret_cast<uint8_t*>(tuple) + tuple_desc_->byte_size());
+    } else {
+      // Reset the null bits, everyhing else will be overwritten
+      Tuple::ClearNullBits(tuple, tuple_desc_->null_bytes_offset(),
+          tuple_desc_->num_null_bytes());
     }
   }
+  LOG(INFO) << "TMATE: Set EOS 1";
   *eos = true;
   return Status::OK();
 }

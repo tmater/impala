@@ -139,6 +139,8 @@ class IcebergMetadataTableScanner {
   Status ReadStringValue(JNIEnv* env, SlotDescriptor* slot_desc, jobject struct_like_row,
       Tuple* tuple, MemPool* tuple_data_pool);
 
+  Status HasNextDataRow(JNIEnv* env, bool* hasNext);
+
  protected:
   /// TupleDescriptor received from the ScanNode.
   const TupleDescriptor* tuple_desc_;

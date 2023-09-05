@@ -77,6 +77,7 @@ Status IcebergMetadataScanNode::GetNext(RuntimeState* state, RowBatch* row_batch
   while(true) {
     RETURN_IF_CANCELLED(state);
     if (row_batch->AtCapacity() || *eos) {
+      LOG(INFO) << "TMATE: rowbatch at capacity, eos:" << *eos;
       return Status::OK();
     }
     RETURN_IF_ERROR(iceberg_metadata_scanner_->GetNext(env, row_batch, eos));

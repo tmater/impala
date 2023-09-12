@@ -41,32 +41,15 @@ IcebergMetadataTableScanner::IcebergMetadataTableScanner(
 
 Status IcebergMetadataTableScanner::Init(JNIEnv* env) {
   // Global class references:
+  
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/impala/catalog/FeIcebergTable", &fe_iceberg_table_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/Table", &iceberg_api_table_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/MetadataTableUtils", &iceberg_metadata_table_utils_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/TableScan", &iceberg_table_scan_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/MetadataTableType", &iceberg_metadata_table_type_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/Scan", &iceberg_scan_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/FileScanTask", &iceberg_file_scan_task_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/DataTask", &iceberg_data_task_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/io/CloseableIterable", &iceberg_closeable_iterable_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/io/CloseableIterator", &iceberg_closeable_iterator_cl_));
+      "org/apache/impala/util/IcebergMetadataScanner",
+      &impala_iceberg_metadata_scanner_cl_));
+
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
       "org/apache/iceberg/StructLike", &iceberg_struct_like_cl_));
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
       "org/apache/iceberg/Accessor", &iceberg_accessor_cl_));
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/Schema", &iceberg_schema_cl_));
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
       "java/util/List", &list_cl_));
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
@@ -81,37 +64,19 @@ Status IcebergMetadataTableScanner::Init(JNIEnv* env) {
       "java/lang/CharSequence", &java_char_sequence_cl_));
 
   // Method ids:
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, fe_iceberg_table_cl_, "getIcebergApiTable",
-      "()Lorg/apache/iceberg/Table;", &fe_iceberg_table_get_iceberg_api_table_));
-  RETURN_IF_ERROR(JniUtil::GetStaticMethodID(env, iceberg_metadata_table_utils_cl_,
-      "createMetadataTableInstance", "(Lorg/apache/iceberg/Table;Lorg/apache/iceberg/"
-          "MetadataTableType;)Lorg/apache/iceberg/Table;",
-      &iceberg_metadata_table_utils_create_metadata_table_instance_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_api_table_cl_, "newScan",
-      "()Lorg/apache/iceberg/TableScan;", &iceberg_table_new_scan_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_scan_cl_, "planFiles",
-      "()Lorg/apache/iceberg/io/CloseableIterable;", &iceberg_table_scan_plan_files_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_closeable_iterable_cl_, "iterator",
-      "()Lorg/apache/iceberg/io/CloseableIterator;",
-      &iceberg_closable_iterable_iterator_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_closeable_iterator_cl_, "hasNext",
-      "()Z", &iceberg_closeable_iterator_has_next_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_closeable_iterator_cl_, "next",
-      "()Ljava/lang/Object;", &iceberg_closeable_iterator_next_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_data_task_cl_, "rows",
-      "()Lorg/apache/iceberg/io/CloseableIterable;", &iceberg_data_task_rows_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_api_table_cl_, "schema",
-      "()Lorg/apache/iceberg/Schema;", &iceberg_table_schema_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_schema_cl_, "columns",
-      "()Ljava/util/List;", &iceberg_schema_columns_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, list_cl_, "get",
-      "(I)Ljava/lang/Object;", &list_get_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_nested_field_cl_, "fieldId",
-      "()I", &iceberg_nested_field_field_id_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_schema_cl_, "accessorForField",
-      "(I)Lorg/apache/iceberg/Accessor;", &iceberg_schema_accessor_for_field_));
+  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
+      "<init>", "(Lorg/apache/impala/catalog/FeTable;Ljava/lang/String;)V", &init_iceberg_metadata_scanner_));
+  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
+      "ScanMetadataTable", "()V", &scan_metadata_table_));
+  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
+      "GetAccessor", "(I)Lorg/apache/iceberg/Accessor;", &get_accessor_));
+  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
+      "GetNext", "()Lorg/apache/iceberg/StructLike;", &get_next_));
+
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_accessor_cl_, "get",
       "(Ljava/lang/Object;)Ljava/lang/Object;", &iceberg_accessor_get_));
+  RETURN_IF_ERROR(JniUtil::GetMethodID(env, list_cl_, "get",
+      "(I)Ljava/lang/Object;", &list_get_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, java_boolean_cl_, "booleanValue", "()Z",
       &boolean_value_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, java_int_cl_, "intValue", "()I",
@@ -125,121 +90,24 @@ Status IcebergMetadataTableScanner::Init(JNIEnv* env) {
 
 Status IcebergMetadataTableScanner::Prepare(JNIEnv* env, jobject* fe_table) {
   SCOPED_TIMER(scan_prepare_timer_);
-  RETURN_IF_ERROR(CreateJIcebergMetadataTable(env, fe_table));
-  RETURN_IF_ERROR(CreateJAccessors(env));
-  return Status::OK();
-}
-
-Status IcebergMetadataTableScanner::CreateJIcebergMetadataTable(JNIEnv* env,
-    jobject* jtable) {
-  DCHECK(jtable != NULL);
-  // FeIcebergTable.getIcebergApiTable()
-  jobject jiceberg_api_table = env->CallObjectMethod(*jtable,
-      fe_iceberg_table_get_iceberg_api_table_);
+  // Create Java Scanner
+  jstring str = env->NewStringUTF(metadata_table_name_->c_str());
+  jobject jmetadata_scanner = env->NewObject(impala_iceberg_metadata_scanner_cl_,
+      init_iceberg_metadata_scanner_, *fe_table, str);
   RETURN_ERROR_IF_EXC(env);
-  // Get the MetadataTableType enum's field
-  jfieldID metadata_table_type_field = env->GetStaticFieldID(
-      iceberg_metadata_table_type_cl_, metadata_table_name_->c_str(),
-      "Lorg/apache/iceberg/MetadataTableType;");
+  RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, jmetadata_scanner, &jmetadata_scanner_));
+  env->CallObjectMethod(jmetadata_scanner_, scan_metadata_table_);
   RETURN_ERROR_IF_EXC(env);
-  // Get the object of MetadataTableType enum field
-  jobject metadata_table_type_object = env->GetStaticObjectField(
-      iceberg_metadata_table_type_cl_, metadata_table_type_field);
-  RETURN_ERROR_IF_EXC(env);
-  // org.apache.iceberg.Table
-  jobject metadata_table = env->CallStaticObjectMethod(iceberg_metadata_table_type_cl_,
-      iceberg_metadata_table_utils_create_metadata_table_instance_, jiceberg_api_table,
-      metadata_table_type_object);
-  RETURN_ERROR_IF_EXC(env);
-  RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, metadata_table, jmetadata_table_));
-  return Status::OK();
-}
-
-Status IcebergMetadataTableScanner::ScanMetadataTable(JNIEnv* env) {
-  SCOPED_TIMER(iceberg_api_scan_timer_);
-  // metadataTable.newScan();
-  jobject scan =  env->CallObjectMethod(*jmetadata_table_, iceberg_table_new_scan_);
-  RETURN_ERROR_IF_EXC(env);
-  // scan.planFiles()
-  jobject file_scan_task_iterable = env->CallObjectMethod(scan,
-      iceberg_table_scan_plan_files_);
-  RETURN_ERROR_IF_EXC(env);
-  RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, file_scan_task_iterable,
-      &file_scan_task_iterable_));
-  // scan.planFiles().iterator()
-  jobject file_scan_task_iterator = env->CallObjectMethod(file_scan_task_iterable_,
-      iceberg_closable_iterable_iterator_);
-  RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, file_scan_task_iterator,
-      &file_scan_task_iterator_));
-  return Status::OK();
-}
-
-Status IcebergMetadataTableScanner::CreateJAccessors(JNIEnv* env) {
   for (SlotDescriptor* slot_desc: tuple_desc_->slots()) {
-    // metadataTable.schema()
-    jobject schema = env->CallObjectMethod(*jmetadata_table_, iceberg_table_schema_);
+    jobject accessor_for_field = env->CallObjectMethod(jmetadata_scanner_,
+        get_accessor_, slot_desc->col_pos());
     RETURN_ERROR_IF_EXC(env);
-    // metadataTable.schema().columns()
-    jobject columns = env->CallObjectMethod(schema, iceberg_schema_columns_);
+    jobject accessor_for_field_global_ref;
+    RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, accessor_for_field,
+        &accessor_for_field_global_ref));
     RETURN_ERROR_IF_EXC(env);
-    // metadataTable.schema().columns().get(column_id)
-    jobject column_field = env->CallObjectMethod(columns, list_get_,
-        slot_desc->col_pos());
-    RETURN_ERROR_IF_EXC(env);
-    // metadataTable.schema().columns().get(column_id).fieldId()
-    jint column_field_id = env->CallIntMethod(column_field,
-        iceberg_nested_field_field_id_);
-    RETURN_ERROR_IF_EXC(env);
-    // metadataTable.schema().accessorForField(field_id)
-    jobject accessor_for_field = env->CallObjectMethod(schema,
-        iceberg_schema_accessor_for_field_, column_field_id);
-    RETURN_ERROR_IF_EXC(env);
-    jaccessors_[slot_desc->col_pos()] = accessor_for_field;
+    jaccessors_[slot_desc->col_pos()] = accessor_for_field_global_ref;
   }
-  return Status::OK();
-}
-
-// Called 
-Status IcebergMetadataTableScanner::HasNextDataRow(JNIEnv* env, bool* hasNext) {
-  LOG(INFO) << "TMATE: " << data_rows_iterator_;
-  if(data_rows_iterator_ != nullptr && env->CallBooleanMethod(data_rows_iterator_, iceberg_closeable_iterator_has_next_)) {
-    LOG(INFO) << "TMATE";
-    RETURN_ERROR_IF_EXC(env);
-    // EASY: if it has more, return true
-    // RETURN_ERROR_IF_EXC(env);
-    *hasNext = true;
-    return Status::OK();
-  }
-  // MEDIUM: DRI is out of rows, we need to iterate FSTI and Init DRI
-  // Iterate till we find an FSTI with DataRows
-  LOG(INFO) << "TMATE: " << file_scan_task_iterator_;
-  RETURN_ERROR_IF_EXC(env);
-  LOG(INFO) << "TMATE";
-  while ((bool) env->CallBooleanMethod(file_scan_task_iterator_, iceberg_closeable_iterator_has_next_)) {
-    RETURN_ERROR_IF_EXC(env);
-    LOG(INFO) << "TMATE " << file_scan_task_iterator_ << " , " << iceberg_closeable_iterator_next_;
-    jobject data_task = env->CallObjectMethod(file_scan_task_iterator_,
-        iceberg_closeable_iterator_next_);
-    LOG(INFO) << "TMATE: data_task: " << data_task;
-    RETURN_ERROR_IF_EXC(env);
-    LOG(INFO) << "TMATE: " << data_task;
-    jobject data_rows_iterable = env->CallObjectMethod(data_task, iceberg_data_task_rows_);
-    RETURN_ERROR_IF_EXC(env);
-    LOG(INFO) << "TMATE";
-    data_rows_iterator_ = env->CallObjectMethod(data_rows_iterable,
-      iceberg_closable_iterable_iterator_);
-    RETURN_ERROR_IF_EXC(env);
-    LOG(INFO) << "TMATE";
-    // Double check:
-    if(env->CallBooleanMethod(data_rows_iterator_, iceberg_closeable_iterator_has_next_)) {
-      RETURN_ERROR_IF_EXC(env);
-      LOG(INFO) << "TMATE";
-      *hasNext = true;
-      return Status::OK();
-    }
-    LOG(INFO) << "TMATE";
-  }
-  *hasNext = false;
   return Status::OK();
 }
 
@@ -253,17 +121,13 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch, bo
       &tuple_buffer));
   Tuple* tuple = reinterpret_cast<Tuple*>(tuple_buffer);
   tuple->Init(tuple_buffer_size);
-  LOG(INFO) << "TMATE";
   bool hasNext = true;
   while(hasNext) {
-    RETURN_IF_ERROR(HasNextDataRow(env, &hasNext));
-    LOG(INFO) << "TMATE";
     RETURN_ERROR_IF_EXC(env);
     if (row_batch->AtCapacity() || !hasNext) {
       if (!hasNext) {
         *eos = true;
       }
-      LOG(INFO) << "TMATE: rowbatch at capacity, eos:" << *eos << " hasNext: " << hasNext;
       return Status::OK();
     }
 
@@ -272,8 +136,15 @@ Status IcebergMetadataTableScanner::GetNext(JNIEnv* env, RowBatch* row_batch, bo
     tuple_row->SetTuple(tuple_idx_, tuple);
     // dataTaskIterator.next()
     LOG(INFO) << "TMATE";
-    jobject struct_like_row = env->CallObjectMethod(data_rows_iterator_,
-        iceberg_closeable_iterator_next_);
+    // jobject struct_like_row = env->CallObjectMethod(data_rows_iterator_,
+    //     iceberg_closeable_iterator_next_);
+
+    // TODO:        WUUUUUUUUU
+    jobject struct_like_row = env->CallObjectMethod(jmetadata_scanner_, get_next_);
+    if (struct_like_row == nullptr) {
+      *eos = true;
+      return Status::OK();
+    }
     LOG(INFO) << "TMATE";
     RETURN_ERROR_IF_EXC(env);
     // Translate a StructLikeRow from Iceberg to Tuple

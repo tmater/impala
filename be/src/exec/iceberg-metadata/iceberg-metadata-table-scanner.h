@@ -57,9 +57,6 @@ class IcebergMetadataTableScanner {
   /// Create Metadata Table object and the Accessors.
   Status Prepare(JNIEnv* env, jobject* fe_table);
 
-  /// Creates the Java Iceberg API Metadata table object and executes the table scan.
-  Status ScanMetadataTable(JNIEnv* env);
-
   /// Iterates over the scan result and fills the RowBatch till it reaches its limit.
   Status GetNext(JNIEnv* env, RowBatch* row_batch, bool* eos);
 
@@ -69,19 +66,9 @@ class IcebergMetadataTableScanner {
   RuntimeState* state_;
 
   /// Global class references created with JniUtil.
-  inline static jclass fe_iceberg_table_cl_ = nullptr;
-  inline static jclass iceberg_api_table_cl_ = nullptr;
-  inline static jclass iceberg_metadata_table_utils_cl_ = nullptr;
-  inline static jclass iceberg_table_scan_cl_ = nullptr;
-  inline static jclass iceberg_metadata_table_type_cl_ = nullptr;
-  inline static jclass iceberg_scan_cl_ = nullptr;
-  inline static jclass iceberg_file_scan_task_cl_ = nullptr;
-  inline static jclass iceberg_closeable_iterable_cl_ = nullptr;
-  inline static jclass iceberg_closeable_iterator_cl_ = nullptr;
-  inline static jclass iceberg_data_task_cl_ = nullptr;
+  inline static jclass impala_iceberg_metadata_scanner_cl_ = nullptr;
   inline static jclass iceberg_struct_like_cl_ = nullptr;
   inline static jclass iceberg_accessor_cl_ = nullptr;
-  inline static jclass iceberg_schema_cl_ = nullptr;
   inline static jclass iceberg_nested_field_cl_ = nullptr;
   inline static jclass list_cl_ = nullptr;
   inline static jclass java_boolean_cl_ = nullptr;
@@ -90,31 +77,18 @@ class IcebergMetadataTableScanner {
   inline static jclass java_char_sequence_cl_ = nullptr;
 
   /// Method references references created with JniUtil.
-  inline static jmethodID fe_iceberg_table_get_iceberg_api_table_ = nullptr;
-  inline static jmethodID iceberg_table_new_scan_ = nullptr;
-  inline static jmethodID iceberg_metadata_table_utils_create_metadata_table_instance_ =
-      nullptr;
-  inline static jmethodID iceberg_table_scan_plan_files_ = nullptr;
-  inline static jmethodID iceberg_closable_iterable_iterator_ = nullptr;
-  inline static jmethodID iceberg_closeable_iterator_has_next_ = nullptr;
-  inline static jmethodID iceberg_closeable_iterator_next_ = nullptr;
-  inline static jmethodID iceberg_data_task_rows_ = nullptr;
-  inline static jmethodID iceberg_table_schema_ = nullptr;
-  inline static jmethodID iceberg_schema_columns_ = nullptr;
-  inline static jmethodID iceberg_nested_field_field_id_ = nullptr;
-  inline static jmethodID iceberg_schema_accessor_for_field_ = nullptr;
+  inline static jmethodID init_iceberg_metadata_scanner_ = nullptr;
+  inline static jmethodID scan_metadata_table_ = nullptr;
+  inline static jmethodID get_accessor_ = nullptr;
+  inline static jmethodID get_next_ = nullptr;
+
+
   inline static jmethodID iceberg_accessor_get_ = nullptr;
   inline static jmethodID list_get_ = nullptr;
   inline static jmethodID boolean_value_ = nullptr;
   inline static jmethodID int_value_ = nullptr;
   inline static jmethodID long_value_ = nullptr;
   inline static jmethodID char_sequence_value_ = nullptr;
-
-  /// Getting enum objects are not straigthforward calls: enum -> field -> object
-  Status CreateJIcebergMetadataTable(JNIEnv* env, jobject* jtable);
-
-  /// Create the accessors for the StructLike rows.
-  Status CreateJAccessors(JNIEnv* env);
 
   /// Takes a StructLike object accesses its records, create a tuple from the result and
   /// adds it to the row_batch.
@@ -139,8 +113,6 @@ class IcebergMetadataTableScanner {
   Status ReadStringValue(JNIEnv* env, SlotDescriptor* slot_desc, jobject struct_like_row,
       Tuple* tuple, MemPool* tuple_data_pool);
 
-  Status HasNextDataRow(JNIEnv* env, bool* hasNext);
-
  protected:
   /// TupleDescriptor received from the ScanNode.
   const TupleDescriptor* tuple_desc_;
@@ -150,16 +122,10 @@ class IcebergMetadataTableScanner {
   const string* metadata_table_name_;
 
   /// Iceberg metadata table object that is created by this scanner.
-  jobject* jmetadata_table_ = new jobject();
+  jobject jmetadata_scanner_;
 
   /// Accessor object for the scan result. These are in the same order as the slot
   std::unordered_map<int, jobject> jaccessors_;
-
-  /// Java iterators to iterate thorugh the table scan result.
-  jobject file_scan_task_iterable_;
-  jobject file_scan_task_iterator_;
-  jobject data_rows_iterator_;
-  jobject next_struct_like_row_;
 
   /// Tuple index in tuple row.
   int tuple_idx_;

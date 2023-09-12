@@ -55,7 +55,6 @@ Status IcebergMetadataScanNode::Prepare(RuntimeState* state) {
   jobject* jtable = new jobject();
   RETURN_IF_ERROR(GetCatalogTable(env, jtable)); // Move to Prepare or Init?
   RETURN_IF_ERROR(iceberg_metadata_scanner_->Prepare(env, jtable));
-
   return Status::OK();
 }
 
@@ -64,7 +63,6 @@ Status IcebergMetadataScanNode::Open(RuntimeState* state) {
   if (env == NULL) {
     return Status("Failed to get/create JVM");
   }
-  RETURN_IF_ERROR(iceberg_metadata_scanner_->ScanMetadataTable(env));
   return Status::OK();
 }
 

@@ -80,6 +80,7 @@ from tests.util.filesystem_utils import (
     FILESYSTEM_NAME)
 
 from tests.util.hdfs_util import (
+  CORE_CONF,
   HdfsConfig,
   get_webhdfs_client,
   get_webhdfs_client_from_conf,
@@ -609,6 +610,14 @@ class ImpalaTestSuite(BaseTestSuite):
     table_format_info = vector.get_value('table_format')
     exec_options = vector.get_value('exec_option')
     protocol = vector.get_value('protocol')
+    # try:
+    #   print ("+++++++++++++++++++++++++TMATEPYTHON+++++++++++++++++++++++++")
+    #   print (NAMENODE)
+    #   print (CORE_CONF.get('fs.defaultFS'))
+    #   raise Exception("+++++++++++++++++++++++++TMATEPYTHON+++++++++++++++++++++++++")
+    # except Exception:
+    #   import traceback
+    #   traceback.print_stack()
 
     target_impalad_clients = list()
     if multiple_impalad:

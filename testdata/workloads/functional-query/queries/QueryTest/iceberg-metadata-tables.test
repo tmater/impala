@@ -411,6 +411,7 @@ SELECT i, INPUT__FILE__NAME from functional_parquet.iceberg_query_metadata tbl;
 ---- RESULTS
 row_regex:[1-9]\d*|0,'.*/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_query_metadata/data/.*.parq'
 row_regex:[1-9]\d*|0,'.*/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_query_metadata/data/.*.parq'
+row_regex:[1-9]\d*|0,'.*/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_query_metadata/data/.*.parq'
 ---- TYPES
 INT,STRING
 ====

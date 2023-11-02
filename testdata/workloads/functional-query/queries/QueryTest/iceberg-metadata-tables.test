@@ -405,11 +405,21 @@ SELECT count(*) FROM functional_parquet.iceberg_query_metadata.manifests;
 BIGINT
 ====
 ---- QUERY
-# Join metadata table with table, REPLACE is needed because for S3 files Iceberg does not
-# adds the filesystem preffix to the file path.
+# Join metadata table with table. REPLACE is needed because Iceberg does not necessarily
+# add the filesystem prefix to the file path.
+SELECT i, INPUT__FILE__NAME from functional_parquet.iceberg_query_metadata tbl;
+---- RESULTS
+row_regex:[1-9]\d*|0,'.*/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_query_metadata/data/.*.parq'
+row_regex:[1-9]\d*|0,'.*/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_query_metadata/data/.*.parq'
+---- TYPES
+INT,STRING
+====
+---- QUERY
+# Join metadata table with table. REPLACE is needed because Iceberg does not necessarily
+# add the filesystem prefix to the file path.
 SELECT i, INPUT__FILE__NAME, file_size_in_bytes from functional_parquet.iceberg_query_metadata tbl
 JOIN functional_parquet.iceberg_query_metadata.all_files mtbl
-ON REPLACE(tbl.input__file__name, "$NAMENODE", "")  = REPLACE(mtbl.file_path, "$NAMENODE", "");
+ON REPLACE(tbl.input__file__name, "$NAMENODE", "") = REPLACE(mtbl.file_path, "$NAMENODE", "");
 ---- RESULTS
 row_regex:[1-9]\d*|0,'.*/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_query_metadata/data/.*.parq',[1-9]\d*|0
 row_regex:[1-9]\d*|0,'.*/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_query_metadata/data/.*.parq',[1-9]\d*|0

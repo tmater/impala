@@ -17,6 +17,7 @@
 
 #include "exec/exec-node.inline.h"
 #include "exec/iceberg-metadata/iceberg-row-reader.h"
+#include "exec/iceberg-metadata/iceberg-metadata-scanner.h"
 #include "runtime/runtime-state.h"
 #include "runtime/timestamp-value.inline.h"
 #include "runtime/tuple-row.h"
@@ -24,8 +25,8 @@
 
 namespace impala {
 
-IcebergRowReader::IcebergRowReader(const std::unordered_map<SlotId, jobject>& jaccessors)
-  : jaccessors_(jaccessors) {}
+IcebergRowReader::IcebergRowReader(IcebergMetadataScanner& metadata_scanner)
+  : metadata_scanner_(metadata_scanner) {}
 
 Status IcebergRowReader::InitJNI() {
   DCHECK(iceberg_accessor_cl_ == nullptr) << "InitJNI() already called!";
@@ -73,14 +74,18 @@ Status IcebergRowReader::MaterializeTuple(JNIEnv* env,
   DCHECK(tuple_desc != nullptr);
 
   for (SlotDescriptor* slot_desc: tuple_desc->slots()) {
-    jobject accessor = jaccessors_.at(slot_desc->id());
+    jobject accessor =  metadata_scanner_.GetAccessor(slot_desc->id());
+    LOG(INFO) << "TMATE: ACCESSOR: " << slot_desc->id() << " " << accessor;
+    // jobject accessor = jaccessors_.at(slot_desc->id());
     jobject accessed_value = env->CallObjectMethod(accessor, iceberg_accessor_get_,
         struct_like_row);
+    LOG(INFO) << "TMATE";
     RETURN_ERROR_IF_EXC(env);
     if (accessed_value == nullptr) {
       tuple->SetNull(slot_desc->null_indicator_offset());
       continue;
     }
+    LOG(INFO) << "TMATE";
     void* slot = tuple->GetSlot(slot_desc->tuple_offset());
     switch (slot_desc->type().type) {
       case TYPE_BOOLEAN: { // java.lang.Boolean

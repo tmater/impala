@@ -18,6 +18,7 @@
 #pragma once
 
 #include "exec/iceberg-metadata/iceberg-row-reader.h"
+#include "exec/iceberg-metadata/iceberg-metadata-scanner.h"
 #include "exec/scan-node.h"
 
 #include <jni.h>
@@ -63,11 +64,7 @@ class IcebergMetadataScanNode : public ScanNode {
  public:
   IcebergMetadataScanNode(ObjectPool* pool, const IcebergMetadataScanPlanNode& pnode,
       const DescriptorTbl& descs);
-
-  /// JNI setup. Creates global references for Java classes and find method ids.
-  /// Initializes static members, should be called once per process lifecycle.
-  static Status InitJNI() WARN_UNUSED_RESULT;
-
+      
   /// Initializes counters, executes Iceberg table scan and initializes accessors.
   Status Prepare(RuntimeState* state) override;
 
@@ -93,14 +90,15 @@ class IcebergMetadataScanNode : public ScanNode {
   /// Iceberg metadata scanner Java object, it helps preparing the metadata table and
   /// executes an Iceberg table scan. Allows the ScanNode to fetch the metadata from
   /// the Java Heap.
-  jobject jmetadata_scanner_;
+  // jobject jmetadata_scanner_;
+  IcebergMetadataScanner metadata_scanner_;
 
   /// Helper class to transform Iceberg rows to Impala tuples.
   std::unique_ptr<IcebergRowReader> iceberg_row_reader_;
 
   /// Accessor map for the scan result, pairs the slot ids with the java Accessor
   /// objects.
-  std::unordered_map<SlotId, jobject> jaccessors_;
+  // std::unordered_map<SlotId, jobject> jaccessors_;
 
   // The TupleId and TupleDescriptor of the tuple that this scan node will populate.
   const TupleId tuple_id_;

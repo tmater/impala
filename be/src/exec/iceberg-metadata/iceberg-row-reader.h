@@ -18,6 +18,7 @@
 #pragma once
 
 #include "common/global-types.h"
+#include "exec/iceberg-metadata/iceberg-metadata-scanner.h"
 
 #include <jni.h>
 #include <unordered_map>
@@ -35,7 +36,7 @@ class TupleDescriptor;
 class IcebergRowReader {
  public:
   /// Initialize the tuple descriptor and accessors
-  IcebergRowReader(const std::unordered_map<SlotId, jobject>& jaccessors);
+  IcebergRowReader(IcebergMetadataScanner& metadata_scanner);
 
   /// JNI setup. Create global references for Java classes and find method ids.
   /// Initializes static members, should be called once per process lifecycle.
@@ -63,9 +64,7 @@ class IcebergRowReader {
   inline static jmethodID long_value_ = nullptr;
   inline static jmethodID char_sequence_to_string_ = nullptr;
 
-  /// Accessor map for the scan result, pairs the slot ids with the java Accessor
-  /// objects.
-  const std::unordered_map<SlotId, jobject> jaccessors_;
+  IcebergMetadataScanner metadata_scanner_;
 
   /// Reads the value of a primitive from the StructLike, translates it to a matching
   /// Impala type and writes it into the target tuple. The related Accessor objects are

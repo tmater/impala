@@ -39,27 +39,6 @@ IcebergMetadataScanNode::IcebergMetadataScanNode(ObjectPool* pool,
     table_name_(pnode.tnode_->iceberg_scan_metadata_node.table_name),
     metadata_table_name_(pnode.tnode_->iceberg_scan_metadata_node.metadata_table_name) {}
 
-Status IcebergMetadataScanNode::InitJNI() {
-  DCHECK(impala_iceberg_metadata_scanner_cl_ == nullptr) << "InitJNI() already called!";
-  JNIEnv* env = JniUtil::GetJNIEnv();
-  if (env == nullptr) return Status("Failed to get/create JVM");
-  // Global class references:
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/impala/util/IcebergMetadataScanner",
-      &impala_iceberg_metadata_scanner_cl_));
-  // Method ids:
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
-      "<init>", "(Lorg/apache/impala/catalog/FeIcebergTable;Ljava/lang/String;)V",
-      &iceberg_metadata_scanner_ctor_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
-      "ScanMetadataTable", "()V", &scan_metadata_table_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
-      "GetNext", "()Lorg/apache/iceberg/StructLike;", &get_next_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
-      "GetAccessor", "(I)Lorg/apache/iceberg/Accessor;", &get_accessor_));
-  return Status::OK();
-}
-
 Status IcebergMetadataScanNode::Prepare(RuntimeState* state) {
   RETURN_IF_ERROR(ScanNode::Prepare(state));
   scan_prepare_timer_ = ADD_TIMER(runtime_profile(), "ScanPrepareTime");
@@ -76,13 +55,10 @@ Status IcebergMetadataScanNode::Prepare(RuntimeState* state) {
   jobject jtable;
   RETURN_IF_ERROR(GetCatalogTable(&jtable));
   // Create the Java Scanner object and scan the table
-  jstring jstr_metadata_table_name = env->NewStringUTF(metadata_table_name_.c_str());
-  jobject jmetadata_scanner = env->NewObject(impala_iceberg_metadata_scanner_cl_,
-      iceberg_metadata_scanner_ctor_, jtable, jstr_metadata_table_name);
   RETURN_ERROR_IF_EXC(env);
-  RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, jmetadata_scanner, &jmetadata_scanner_));
   RETURN_ERROR_IF_EXC(env);
-  RETURN_IF_ERROR(ScanMetadataTable());
+  RETURN_IF_ERROR(metadata_scanner_.CreateIcebergMetadataScanner(env, jtable, metadata_table_name_.c_str()));
+  RETURN_IF_ERROR(metadata_scanner_.ScanMetadataTable(env));
   RETURN_IF_ERROR(CreateFieldAccessors());
   return Status::OK();
 }
@@ -95,7 +71,7 @@ Status IcebergMetadataScanNode::CreateFieldAccessors() {
       // Get the top level struct's field id from the ColumnDescriptor then recursively
       // get the field ids for struct fields
       int field_id = tuple_desc_->table_desc()->GetColumnDesc(slot_desc).field_id();
-      RETURN_IF_ERROR(AddAccessorForFieldId(env, field_id, slot_desc->id()));
+      RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, slot_desc->id()));
       RETURN_IF_ERROR(CreateFieldAccessors(env, slot_desc));
     } else if (slot_desc->col_path().size() > 1) {
       DCHECK(!slot_desc->type().IsComplexType());
@@ -110,11 +86,11 @@ Status IcebergMetadataScanNode::CreateFieldAccessors() {
         current_type = &current_type->children[slot_desc->col_path()[i]];
       }
       int field_id = current_type->field_ids[slot_desc->col_path().back()];
-      RETURN_IF_ERROR(AddAccessorForFieldId(env, field_id, slot_desc->id()));
+      RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, slot_desc->id()));
     } else {
       // For primitives in the top level tuple, use the ColumnDescriptor
       int field_id = tuple_desc_->table_desc()->GetColumnDesc(slot_desc).field_id();
-      RETURN_IF_ERROR(AddAccessorForFieldId(env, field_id, slot_desc->id()));
+      RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, slot_desc->id()));
     }
   }
   return Status::OK();
@@ -127,7 +103,8 @@ Status IcebergMetadataScanNode::CreateFieldAccessors(JNIEnv* env,
   for (SlotDescriptor* child_slot_desc:
       struct_slot_desc->children_tuple_descriptor()->slots()) {
     int field_id = struct_field_ids[child_slot_desc->col_path().back()];
-    RETURN_IF_ERROR(AddAccessorForFieldId(env, field_id, child_slot_desc->id()));
+    // RETURN_IF_ERROR(AddAccessorForFieldId(env, field_id, child_slot_desc->id()));
+    RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, child_slot_desc->id()));
     if (child_slot_desc->type().IsStructType()) {
       RETURN_IF_ERROR(CreateFieldAccessors(env, child_slot_desc));
     }
@@ -135,21 +112,9 @@ Status IcebergMetadataScanNode::CreateFieldAccessors(JNIEnv* env,
   return Status::OK();
 }
 
-Status IcebergMetadataScanNode::AddAccessorForFieldId(JNIEnv* env, int field_id,
-    SlotId slot_id) {
-  jobject accessor_for_field = env->CallObjectMethod(jmetadata_scanner_,
-      get_accessor_, field_id);
-  RETURN_ERROR_IF_EXC(env);
-  jobject accessor_for_field_global_ref;
-  RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, accessor_for_field,
-      &accessor_for_field_global_ref));
-  jaccessors_[slot_id] = accessor_for_field_global_ref;
-  return Status::OK();
-}
-
 Status IcebergMetadataScanNode::Open(RuntimeState* state) {
   RETURN_IF_ERROR(ScanNode::Open(state));
-  iceberg_row_reader_.reset(new IcebergRowReader(jaccessors_));
+  iceberg_row_reader_.reset(new IcebergRowReader(metadata_scanner_));
   return Status::OK();
 }
 
@@ -170,8 +135,11 @@ Status IcebergMetadataScanNode::GetNext(RuntimeState* state, RowBatch* row_batch
     int row_idx = row_batch->AddRow();
     TupleRow* tuple_row = row_batch->GetRow(row_idx);
     tuple_row->SetTuple(0, tuple);
+
     // Get the next row from 'org.apache.impala.util.IcebergMetadataScanner'
-    jobject struct_like_row = env->CallObjectMethod(jmetadata_scanner_, get_next_);
+    jobject struct_like_row;
+    RETURN_IF_ERROR(metadata_scanner_.GetNext(env, struct_like_row));
+    // jobject struct_like_row = env->CallObjectMethod(jmetadata_scanner_, get_next_);
     RETURN_ERROR_IF_EXC(env);
     // When 'struct_like_row' is null, there are no more rows to read
     if (struct_like_row == nullptr) {
@@ -205,10 +173,10 @@ void IcebergMetadataScanNode::Close(RuntimeState* state) {
   JNIEnv* env = JniUtil::GetJNIEnv();
   if (env != nullptr) {
     // Close global references
-    if (jmetadata_scanner_ != nullptr) env->DeleteGlobalRef(jmetadata_scanner_);
-    for (auto accessor : jaccessors_) {
-      if (accessor.second != nullptr) env->DeleteGlobalRef(accessor.second);
-    }
+    // if (jmetadata_scanner_ != nullptr) env->DeleteGlobalRef(jmetadata_scanner_);
+    // for (auto accessor : jaccessors_) {
+    //   if (accessor.second != nullptr) env->DeleteGlobalRef(accessor.second);
+    // }
   } else {
     LOG(ERROR) << "Couldn't get JNIEnv, unable to release Global JNI references";
   }
@@ -218,14 +186,5 @@ void IcebergMetadataScanNode::Close(RuntimeState* state) {
 Status IcebergMetadataScanNode::GetCatalogTable(jobject* jtable) {
   Frontend* fe = ExecEnv::GetInstance()->frontend();
   RETURN_IF_ERROR(fe->GetCatalogTable(table_name_, jtable));
-  return Status::OK();
-}
-
-Status IcebergMetadataScanNode::ScanMetadataTable() {
-  JNIEnv* env = JniUtil::GetJNIEnv();
-  if (env == nullptr) return Status("Failed to get/create JVM");
-  SCOPED_TIMER(iceberg_api_scan_timer_);
-  env->CallObjectMethod(jmetadata_scanner_, scan_metadata_table_);
-  RETURN_ERROR_IF_EXC(env);
   return Status::OK();
 }

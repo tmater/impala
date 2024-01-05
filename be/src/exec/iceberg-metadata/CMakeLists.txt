@@ -24,6 +24,7 @@ set(EXECUTABLE_OUTPUT_PATH "${BUILD_OUTPUT_ROOT_DIRECTORY}/exec/iceberg-metadata
 add_library(ExecIcebergMetadata
   iceberg-metadata-scan-node.cc
   iceberg-row-reader.cc
+  iceberg-metadata-scanner.cc
 )
 
 add_dependencies(ExecIcebergMetadata gen-deps)

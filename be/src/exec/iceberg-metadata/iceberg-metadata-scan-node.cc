@@ -67,14 +67,29 @@ Status IcebergMetadataScanNode::CreateFieldAccessors() {
   JNIEnv* env = JniUtil::GetJNIEnv();
   if (env == nullptr) return Status("Failed to get/create JVM");
   for (SlotDescriptor* slot_desc: tuple_desc_->slots()) {
+    LOG(INFO) << "TMATE: " << slot_desc->DebugString();
+    google::FlushLogFiles(google::GLOG_INFO);
     if (slot_desc->type().IsStructType()) {
       // Get the top level struct's field id from the ColumnDescriptor then recursively
       // get the field ids for struct fields
       int field_id = tuple_desc_->table_desc()->GetColumnDesc(slot_desc).field_id();
       RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, slot_desc->id()));
       RETURN_IF_ERROR(CreateFieldAccessors(env, slot_desc));
+    } else if (slot_desc->type().IsArrayType()) {
+      LOG(INFO) << "TMATE";
+      google::FlushLogFiles(google::GLOG_INFO);
+      int field_id = tuple_desc_->table_desc()->GetColumnDesc(slot_desc).field_id();
+      RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, slot_desc->id()));
+      google::FlushLogFiles(google::GLOG_INFO);
+      SlotDescriptor* struct_slot_desc = slot_desc->children_tuple_descriptor()->slots()[0];
+
+      // jaccessors_[struct_slot_desc->id()] = jaccessors_[slot_desc->id()];
+
+      RETURN_IF_ERROR(CreateFieldAccessors(env, struct_slot_desc));
     } else if (slot_desc->col_path().size() > 1) {
       DCHECK(!slot_desc->type().IsComplexType());
+      LOG(INFO) << "TMATE";
+      google::FlushLogFiles(google::GLOG_INFO);
       // Slot that is child of a struct without tuple, can occur when a struct member is
       // in the select list. ColumnType has a tree structure, and this loop finds the
       // STRUCT node that stores the primitive type. Because, that struct node has the
@@ -88,24 +103,31 @@ Status IcebergMetadataScanNode::CreateFieldAccessors() {
       int field_id = current_type->field_ids[slot_desc->col_path().back()];
       RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, slot_desc->id()));
     } else {
+      LOG(INFO) << "TMATE";
+      google::FlushLogFiles(google::GLOG_INFO);
       // For primitives in the top level tuple, use the ColumnDescriptor
       int field_id = tuple_desc_->table_desc()->GetColumnDesc(slot_desc).field_id();
       RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, slot_desc->id()));
     }
   }
+  // placeholder STRUCT with the array accessor, not used anyway
+  RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, 9, 1));
+  LOG(INFO) << "TMATE";
+  google::FlushLogFiles(google::GLOG_INFO);
   return Status::OK();
 }
 
 Status IcebergMetadataScanNode::CreateFieldAccessors(JNIEnv* env,
     const SlotDescriptor* struct_slot_desc) {
   if (!struct_slot_desc->type().IsStructType()) return Status::OK();
+  LOG(INFO) << "TMATE";
+  google::FlushLogFiles(google::GLOG_INFO);
   const std::vector<int>& struct_field_ids = struct_slot_desc->type().field_ids;
   for (SlotDescriptor* child_slot_desc:
       struct_slot_desc->children_tuple_descriptor()->slots()) {
     int field_id = struct_field_ids[child_slot_desc->col_path().back()];
-    // RETURN_IF_ERROR(AddAccessorForFieldId(env, field_id, child_slot_desc->id()));
     RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, child_slot_desc->id()));
-    if (child_slot_desc->type().IsStructType()) {
+    if (child_slot_desc->type().IsComplexType()) {
       RETURN_IF_ERROR(CreateFieldAccessors(env, child_slot_desc));
     }
   }
@@ -148,7 +170,7 @@ Status IcebergMetadataScanNode::GetNext(RuntimeState* state, RowBatch* row_batch
     }
     // Translate a StructLikeRow from Iceberg to Tuple
     RETURN_IF_ERROR(iceberg_row_reader_->MaterializeTuple(env, struct_like_row,
-        tuple_desc_, tuple, row_batch->tuple_data_pool()));
+        tuple_desc_, tuple, row_batch->tuple_data_pool(), state));
     env->DeleteLocalRef(struct_like_row);
     RETURN_ERROR_IF_EXC(env);
     COUNTER_ADD(rows_read_counter(), 1);

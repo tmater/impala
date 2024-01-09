@@ -19,6 +19,8 @@ package org.apache.impala.util;
 
 import com.google.common.base.Preconditions;
 
+import java.util.List;
+
 import org.apache.iceberg.Accessor;
 import org.apache.iceberg.DataTask;
 import org.apache.iceberg.FileScanTask;
@@ -26,6 +28,9 @@ import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataTableUtils;
 import org.apache.iceberg.StructLike;
 import org.apache.impala.catalog.FeIcebergTable;
+import org.jline.utils.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableScan;
 import org.apache.iceberg.io.CloseableIterator;
@@ -39,6 +44,10 @@ import org.apache.iceberg.io.CloseableIterator;
  * caller of {@code IcebergMetadataScanner}.
  */
 public class IcebergMetadataScanner {
+
+  private final static Logger LOG = LoggerFactory.getLogger(IcebergMetadataScanner.class);
+
+
   // FeTable object is extracted by the backend and passed when this object is created
   private FeIcebergTable iceTbl_ = null;
 
@@ -53,6 +62,9 @@ public class IcebergMetadataScanner {
 
   // Persist the data rows iterator, so we can continue after a batch is filled
   private CloseableIterator<StructLike> dataRowsIterator_;
+
+  // Array iterator
+  private int arrayIteratorIndex = 0;
 
   public IcebergMetadataScanner(FeIcebergTable iceTbl, String metadataTableName) {
     Preconditions.checkNotNull(iceTbl);
@@ -93,7 +105,8 @@ public class IcebergMetadataScanner {
    * used to access a field in the {StructLike} object.
    */
   public Accessor GetAccessor(int fieldId) {
-    return metadataTable_.schema().accessorForField(fieldId);
+    Accessor accessor = metadataTable_.schema().accessorForField(fieldId);
+    return accessor;
   }
 
   /**
@@ -110,6 +123,16 @@ public class IcebergMetadataScanner {
       return dataRowsIterator_.next();
     }
     return null;
+  }
+
+  public StructLike GetNextArrayItem(List<StructLike> array) {
+    
+    LOG.info("TMATE: " + array.size());
+    if (arrayIteratorIndex < array.size()) {
+      return array.get(arrayIteratorIndex++);
+    } else {
+      return null;
+    }
   }
 
 }

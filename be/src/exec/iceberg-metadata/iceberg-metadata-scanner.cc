@@ -37,6 +37,8 @@ Status IcebergMetadataScanner::InitJNI() {
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
       "GetNext", "()Lorg/apache/iceberg/StructLike;", &get_next_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
+      "GetNextArrayItem", "(Ljava/util/List;)Lorg/apache/iceberg/StructLike;", &get_next_array_item_));
+  RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
       "GetAccessor", "(I)Lorg/apache/iceberg/Accessor;", &get_accessor_));
   return Status::OK();
 }
@@ -67,10 +69,12 @@ Status IcebergMetadataScanner::CreateAccessorForFieldId(JNIEnv* env, int field_i
   LOG(INFO) << "TMATE " << field_id << " " << slot_id;
   jobject accessor_for_field = env->CallObjectMethod(jmetadata_scanner_,
       get_accessor_, field_id);
+  LOG(INFO) << "TMATE: " << accessor_for_field;
   RETURN_ERROR_IF_EXC(env);
   jobject accessor_for_field_global_ref;
   RETURN_IF_ERROR(JniUtil::LocalToGlobalRef(env, accessor_for_field,
       &accessor_for_field_global_ref));
+  LOG(INFO) << "TMATE: " << accessor_for_field_global_ref;
   jaccessors_[slot_id] = accessor_for_field_global_ref;
   return Status::OK();
 }
@@ -91,9 +95,10 @@ Status IcebergMetadataScanner::GetNext(JNIEnv* env, jobject& struct_like_row) {
   return Status::OK();
 }
 
-Status IcebergMetadataScanner::GetNextArrayItem() {
-  
-
+Status IcebergMetadataScanner::GetNextArrayItem(JNIEnv* env, jobject list, jobject& result) {
+  result = env->CallObjectMethod(jmetadata_scanner_,
+      get_next_array_item_, list);
+  RETURN_ERROR_IF_EXC(env);
   return Status::OK();
 }
 

@@ -25,9 +25,11 @@
 
 namespace impala {
 
+class CollectionValue;
 class MemPool;
 class Status;
 class SlotDescriptor;
+class RuntimeState;
 class Tuple;
 class TupleDescriptor;
 
@@ -44,7 +46,8 @@ class IcebergRowReader {
 
   /// Materialize the StructLike Java objects into Impala rows.
   Status MaterializeTuple(JNIEnv* env, jobject struct_like_row,
-      const TupleDescriptor* tuple_desc, Tuple* tuple,  MemPool* tuple_data_pool);
+      const TupleDescriptor* tuple_desc, Tuple* tuple,  MemPool* tuple_data_pool,
+      RuntimeState* state);
 
  private:
   /// Global class references created with JniUtil.
@@ -81,7 +84,9 @@ class IcebergRowReader {
       MemPool* tuple_data_pool);
   /// Recursively calls MaterializeTuple method with the child tuple of the struct slot.
   Status WriteStructSlot(JNIEnv* env, jobject struct_like_row, SlotDescriptor* slot_desc,
-      Tuple* tuple, MemPool* tuple_data_pool);
+      Tuple* tuple, MemPool* tuple_data_pool, RuntimeState* state);
+  Status WriteArraySlot(JNIEnv* env, jobject accessed_value, CollectionValue* slot,
+      SlotDescriptor* slot_desc, Tuple* tuple, MemPool* tuple_data_pool, RuntimeState* state);
 };
 
 }

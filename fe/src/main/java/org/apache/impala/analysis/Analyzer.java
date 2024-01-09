@@ -3608,6 +3608,7 @@ public class Analyzer {
    * table is kept. The metadata table will have its vTbl field filled, while the original
    * table gets a new key without the vTbl field.
    * 'tblRefPath' parameter has to be an IcebergMetadataTable reference path.
+   * Returns the newly created Iceberg metadata table.
    */
   public void addMetadataVirtualTable(List<String> tblRefPath) throws AnalysisException {
     Preconditions.checkArgument(IcebergMetadataTable.isIcebergMetadataTable(tblRefPath));

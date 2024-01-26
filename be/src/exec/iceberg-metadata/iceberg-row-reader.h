@@ -62,6 +62,7 @@ class IcebergRowReader {
   /// Method references created with JniUtil.
   inline static jmethodID iceberg_accessor_get_ = nullptr;
   inline static jmethodID list_get_ = nullptr;
+  inline static jmethodID list_size_ = nullptr;
   inline static jmethodID boolean_value_ = nullptr;
   inline static jmethodID int_value_ = nullptr;
   inline static jmethodID long_value_ = nullptr;
@@ -87,6 +88,9 @@ class IcebergRowReader {
       Tuple* tuple, MemPool* tuple_data_pool, RuntimeState* state);
   Status WriteArraySlot(JNIEnv* env, jobject accessed_value, CollectionValue* slot,
       SlotDescriptor* slot_desc, Tuple* tuple, MemPool* tuple_data_pool, RuntimeState* state);
+
+  jobject GetJavaClassForType();
+  
 };
 
 }

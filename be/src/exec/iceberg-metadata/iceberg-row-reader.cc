@@ -52,6 +52,8 @@ Status IcebergRowReader::InitJNI() {
   // Method ids:
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, list_cl_, "get",
       "(I)Ljava/lang/Object;", &list_get_));
+  RETURN_IF_ERROR(JniUtil::GetMethodID(env, list_cl_, "size",
+      "()I", &list_size_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_accessor_cl_, "get",
       "(Ljava/lang/Object;)Ljava/lang/Object;", &iceberg_accessor_get_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, java_boolean_cl_, "booleanValue", "()Z",
@@ -74,32 +76,56 @@ Status IcebergRowReader::MaterializeTuple(JNIEnv* env,
   DCHECK(tuple_data_pool != nullptr);
   DCHECK(tuple_desc != nullptr);
 
-  LOG(INFO) << "TMATE before slot_desc loop: " << tuple_desc->DebugString();
+  LOG(INFO) << "TMATE MaterializeTuple tuple_desc: " << tuple_desc->DebugString();
   google::FlushLogFiles(google::GLOG_INFO);
+
   for (SlotDescriptor* slot_desc: tuple_desc->slots()) {
-    LOG(INFO) << "TMATE MaterializeTuple";
+    LOG(INFO) << "TMATE MaterializeTuple slot_desc: " << slot_desc->DebugString();
     google::FlushLogFiles(google::GLOG_INFO);
-    jobject accessor =  metadata_scanner_.GetAccessor(slot_desc->id());
-    LOG(INFO) << "TMATE MaterializeTuple" << accessor;
-    LOG(INFO) << "TMATE: " << slot_desc->DebugString();
-    google::FlushLogFiles(google::GLOG_INFO);
+
+    jobject accessor = metadata_scanner_.GetAccessor(slot_desc->id());
     jobject accessed_value;
-    // if (slot_desc->id() != 1) {
-    // This call crashes the process
-    accessed_value = env->CallObjectMethod(accessor, iceberg_accessor_get_,
-        struct_like_row);
-    RETURN_ERROR_IF_EXC(env);
-    LOG(INFO) << "TMATE MaterializeTuple";
+
+    LOG(INFO) << "TMATE: accessor: " << accessor;
     google::FlushLogFiles(google::GLOG_INFO);
+    if (accessor == nullptr) { 
+      // we do not have accessor for LIST/MAP elements
+      if (tuple_desc->isTupleOfStructSlot()) {
+        LOG(INFO) << "TMATE: Tuple of a struct, slot;";
+        google::FlushLogFiles(google::GLOG_INFO);
+        // cannot directly access this value, need positional access:
+        // struct_like_row.get(pos, type?)
+        int pos = slot_desc->col_path().back();
+        switch (slot_desc->type().type) {
+          case TYPE_BOOLEAN: { // java.lang.Boolean
+            LOG(INFO) << "TMATE: BOOLEAN";
+            google::FlushLogFiles(google::GLOG_INFO);
+            RETURN_IF_ERROR(metadata_scanner_.GetValueByPos(env, struct_like_row, pos, java_boolean_cl_, accessed_value));
+            break;
+          } case TYPE_STRING: { // java.lang.String
+            LOG(INFO) << "TMATE: TYPE_STRING";
+            google::FlushLogFiles(google::GLOG_INFO);
+            RETURN_IF_ERROR(metadata_scanner_.GetValueByPos(env, struct_like_row, pos, java_char_sequence_cl_, accessed_value));
+            break;
+          }
+          default:
+            VLOG(3) << "Skipping unsupported column type: " << slot_desc->type().type;
+        }
+        // accessed_value = struct_like_row;
+      } else {
+        // We can directly access this value
+        accessed_value = struct_like_row;
+      }
+    } else {
+      accessed_value = env->CallObjectMethod(accessor, iceberg_accessor_get_,
+          struct_like_row);
+      RETURN_ERROR_IF_EXC(env);
+    }
     if (accessed_value == nullptr) {
-      LOG(INFO) << "TMATE: " << "NULL accessed value";
-      google::FlushLogFiles(google::GLOG_INFO);
       tuple->SetNull(slot_desc->null_indicator_offset());
       continue;
     }
-    // }
     void* slot = tuple->GetSlot(slot_desc->tuple_offset());
-    LOG(INFO) << "TMATE: " << slot_desc->DebugString();
     switch (slot_desc->type().type) {
       case TYPE_BOOLEAN: { // java.lang.Boolean
         RETURN_IF_ERROR(WriteBooleanSlot(env, accessed_value, slot));
@@ -137,7 +163,7 @@ Status IcebergRowReader::MaterializeTuple(JNIEnv* env,
 Status IcebergRowReader::WriteBooleanSlot(JNIEnv* env, jobject accessed_value,
     void* slot) {
   DCHECK(accessed_value != nullptr);
-  DCHECK(env->IsInstanceOf(accessed_value, java_boolean_cl_) == JNI_TRUE);
+  // DCHECK(env->IsInstanceOf(accessed_value, java_boolean_cl_) == JNI_TRUE);
   jboolean result = env->CallBooleanMethod(accessed_value, boolean_value_);
   RETURN_ERROR_IF_EXC(env);
   *reinterpret_cast<bool*>(slot) = (bool)(result == JNI_TRUE);
@@ -176,7 +202,7 @@ Status IcebergRowReader::WriteTimeStampSlot(JNIEnv* env, jobject accessed_value,
 Status IcebergRowReader::WriteStringSlot(JNIEnv* env, jobject accessed_value, void* slot,
       MemPool* tuple_data_pool) {
   DCHECK(accessed_value != nullptr);
-  DCHECK(env->IsInstanceOf(accessed_value, java_char_sequence_cl_) == JNI_TRUE);
+  // DCHECK(env->IsInstanceOf(accessed_value, java_char_sequence_cl_) == JNI_TRUE);
   jstring result = static_cast<jstring>(env->CallObjectMethod(accessed_value,
       char_sequence_to_string_));
   RETURN_ERROR_IF_EXC(env);
@@ -191,7 +217,6 @@ Status IcebergRowReader::WriteStringSlot(JNIEnv* env, jobject accessed_value, vo
     return tuple_data_pool->mem_tracker()->MemLimitExceeded(nullptr, details, str_len);
   }
   memcpy(buffer, str_guard.get(), str_len);
-  LOG(INFO) << "TMATE: " << buffer;
   reinterpret_cast<StringValue*>(slot)->Assign(buffer, str_len);
   return Status::OK();
 }
@@ -199,7 +224,6 @@ Status IcebergRowReader::WriteStringSlot(JNIEnv* env, jobject accessed_value, vo
 Status IcebergRowReader::WriteStructSlot(JNIEnv* env, jobject struct_like_row,
     SlotDescriptor* slot_desc, Tuple* tuple, MemPool* tuple_data_pool, RuntimeState* state) {
   DCHECK(slot_desc != nullptr);
-  LOG(INFO) << "TMATE: write struct!";
   RETURN_IF_ERROR(MaterializeTuple(env, struct_like_row,
       slot_desc->children_tuple_descriptor(), tuple, tuple_data_pool, state));
   return Status::OK();
@@ -208,33 +232,39 @@ Status IcebergRowReader::WriteStructSlot(JNIEnv* env, jobject struct_like_row,
 Status IcebergRowReader::WriteArraySlot(JNIEnv* env, jobject struct_like_row,
     CollectionValue* slot, SlotDescriptor* slot_desc, Tuple* tuple,
     MemPool* tuple_data_pool, RuntimeState* state) {
+  LOG(INFO) << "TMATE Writing Array slot children tuple descriptor: "
+      << slot_desc->children_tuple_descriptor()->DebugString();
   DCHECK(env->IsInstanceOf(struct_like_row, list_cl_) == JNI_TRUE);
-  // TODO: CollectionValueBuilder needs state!
-  Tuple* tuple_mem;
+  const TupleDescriptor* item_desc = slot_desc->children_tuple_descriptor();
+
   // TupleRow* tuple_row_mem = nullptr;
   // Recursively read the collection into a new CollectionValue.
   *slot = CollectionValue();
-  LOG(INFO) << "TMATE Array child_tuple_desc: " << slot_desc->children_tuple_descriptor()->DebugString();
   CollectionValueBuilder coll_value_builder(
       slot, *slot_desc->children_tuple_descriptor(), tuple_data_pool, state);
 
   // Need to get memory for the collection
-  int num_tuples = 0;
+  Tuple* tuple_mem;
+  int num_tuples = env->CallIntMethod(struct_like_row, list_size_);
+  RETURN_ERROR_IF_EXC(env);
   tuple_data_pool = coll_value_builder.pool();
   RETURN_IF_ERROR(coll_value_builder.GetFreeMemory(&tuple_mem, &num_tuples));
-  // Treat tuple as a single-tuple row
-  // tuple_row_mem = reinterpret_cast<TupleRow*>(tuple_mem);
-  // *num_rows = num_tuples;
 
   jobject element;
+  int elementCntr = 0;
   while (true) {
-   RETURN_IF_ERROR(metadata_scanner_.GetNextArrayItem(env, struct_like_row, element));
-  LOG(INFO) << "TMATE: Before element!";
-   if (element == nullptr) break;
-   LOG(INFO) << "TMATE: Call materialize view!";
-   RETURN_IF_ERROR(MaterializeTuple(env, element,
+    // need to re-init the tuple
+    // we can get a size of array to be more precise
+    RETURN_IF_ERROR(metadata_scanner_.GetNextArrayItem(env, struct_like_row, element));
+    LOG(INFO) << "TMATE: Before element! Children tuple: " << slot_desc->children_tuple_descriptor()->DebugString();
+    if (element == nullptr) break;
+    LOG(INFO) << "TMATE: Could call materialize view!";
+    RETURN_IF_ERROR(MaterializeTuple(env, element,
         slot_desc->children_tuple_descriptor(), tuple_mem, tuple_data_pool, state));
+    elementCntr++;
+    tuple_mem += item_desc->byte_size();
   }
+  coll_value_builder.CommitTuples(elementCntr);
   // Pass the array to a 
 
   // the call MaterializeTuple, with iterated struct_like_row
@@ -242,6 +272,8 @@ Status IcebergRowReader::WriteArraySlot(JNIEnv* env, jobject struct_like_row,
   //     parent_->AssembleCollection(children_, new_collection_rep_level(), &builder);
   // if (!continue_execution) return false;
   return Status::OK();
+
+
 }
 
 }

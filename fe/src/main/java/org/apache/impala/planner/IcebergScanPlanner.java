@@ -530,9 +530,9 @@ public class IcebergScanPlanner {
       equalityIds_.addAll(equalityFieldIds);
     } else if (equalityIds_.size() != equalityFieldIds.size() ||
         !equalityIds_.containsAll(equalityFieldIds)) {
-      throw new ImpalaRuntimeException(String.format("Equality delete files with " +
-          "different equality field ID lists aren't supported. %s vs %s", equalityIds_,
-          equalityFieldIds));
+      // throw new ImpalaRuntimeException(String.format("Equality delete files with " +
+      //     "different equality field ID lists aren't supported. %s vs %s", equalityIds_,
+      //     equalityFieldIds));
     }
   }
 

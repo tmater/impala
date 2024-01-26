@@ -94,6 +94,7 @@ public class IcebergMetadataScanner {
     // Create and scan the metadata table
     metadataTable_ = MetadataTableUtils.createMetadataTableInstance(
         iceTbl_.getIcebergApiTable(), MetadataTableType.valueOf(metadataTableName_));
+    LOG.info("TMATE MetadataTable schema: " + metadataTable_.schema().toString());
     TableScan scan = metadataTable_.newScan();
     // Init the FileScanTask iterator and DataRowsIterator
     fileScanTaskIterator_ = scan.planFiles().iterator();
@@ -106,6 +107,11 @@ public class IcebergMetadataScanner {
    */
   public Accessor GetAccessor(int fieldId) {
     Accessor accessor = metadataTable_.schema().accessorForField(fieldId);
+    if (accessor != null) {
+      LOG.info("TMATE: Java side accessor: " + accessor.toString());
+    } else {
+      LOG.info("TMATE: Java side accessor null");
+    }
     return accessor;
   }
 
@@ -114,6 +120,7 @@ public class IcebergMetadataScanner {
    * and its fields can be accessed with {Accessor}s.
    */
   public StructLike GetNext() {
+    arrayIteratorIndex = 0;
     // Return the next row in the DataRows iterator
     if (dataRowsIterator_.hasNext()) {
       return dataRowsIterator_.next();
@@ -125,14 +132,25 @@ public class IcebergMetadataScanner {
     return null;
   }
 
-  public StructLike GetNextArrayItem(List<StructLike> array) {
-    
-    LOG.info("TMATE: " + array.size());
+  public Object GetNextArrayItem(List<Object> array, Class classTypeClass) {
+    LOG.info("TMATE array size: " + array.size() + " array iterator: " + arrayIteratorIndex);
     if (arrayIteratorIndex < array.size()) {
+      LOG.info("TMATE: array value: " + array.get(arrayIteratorIndex));
       return array.get(arrayIteratorIndex++);
     } else {
       return null;
     }
+  }
+
+
+  public <T> T GetValueByPos(StructLike structLike, int pos, Class<T> classTypeClass) {
+    T result = structLike.get(pos, classTypeClass);
+    if (result != null) {
+      LOG.info("TMATE: GetValueByPos: " + result.toString());
+    } else {
+      LOG.info("TMAET: GetValueByPos NULL");
+    }
+    return result;
   }
 
 }

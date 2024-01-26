@@ -49,6 +49,8 @@ class IcebergMetadataScanner {
 
   Status GetNextArrayItem(JNIEnv* env, jobject list, jobject& result);
 
+  Status GetValueByPos(JNIEnv* env, jobject struct_like, int pos, jclass clazz, jobject &result);
+
  private:
   /// Global class references created with JniUtil.
   inline static jclass impala_iceberg_metadata_scanner_cl_ = nullptr;
@@ -59,6 +61,7 @@ class IcebergMetadataScanner {
   inline static jmethodID get_accessor_ = nullptr;
   inline static jmethodID get_next_ = nullptr;
   inline static jmethodID get_next_array_item_ = nullptr;
+  inline static jmethodID get_value_by_pos_ = nullptr;
 
   /// Iceberg metadata scanner Java object, it helps preparing the metadata table and
   /// executes an Iceberg table scan. Allows the ScanNode to fetch the metadata from

@@ -110,10 +110,6 @@ Status IcebergMetadataScanNode::CreateFieldAccessors() {
       RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, field_id, slot_desc->id()));
     }
   }
-  // placeholder STRUCT with the array accessor, not used anyway
-  RETURN_IF_ERROR(metadata_scanner_.CreateAccessorForFieldId(env, 9, 1));
-  LOG(INFO) << "TMATE";
-  google::FlushLogFiles(google::GLOG_INFO);
   return Status::OK();
 }
 

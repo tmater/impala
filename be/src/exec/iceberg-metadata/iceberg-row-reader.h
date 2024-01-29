@@ -51,7 +51,6 @@ class IcebergRowReader {
 
  private:
   /// Global class references created with JniUtil.
-  inline static jclass iceberg_accessor_cl_ = nullptr;
   inline static jclass iceberg_nested_field_cl_ = nullptr;
   inline static jclass list_cl_ = nullptr;
   inline static jclass java_boolean_cl_ = nullptr;
@@ -60,7 +59,6 @@ class IcebergRowReader {
   inline static jclass java_char_sequence_cl_ = nullptr;
 
   /// Method references created with JniUtil.
-  inline static jmethodID iceberg_accessor_get_ = nullptr;
   inline static jmethodID list_get_ = nullptr;
   inline static jmethodID list_size_ = nullptr;
   inline static jmethodID boolean_value_ = nullptr;
@@ -89,7 +87,8 @@ class IcebergRowReader {
   Status WriteArraySlot(JNIEnv* env, jobject accessed_value, CollectionValue* slot,
       SlotDescriptor* slot_desc, Tuple* tuple, MemPool* tuple_data_pool, RuntimeState* state);
 
-  jobject GetJavaClassForType();
+  /// Adapter class that gives back the Java class for the Column type.
+  jclass GetJavaClassForImpalaType(const ColumnType type);
   
 };
 

@@ -43,19 +43,23 @@ class IcebergMetadataScanner {
 
   jobject GetAccessor(SlotId slot_id);
 
-  Status AccessValue(JNIEnv* env, SlotId slot_id);
+  Status AccessValue(JNIEnv* env, SlotDescriptor* slot_desc, jobject struct_like_row,
+      jclass clazz, jobject& result);
 
   Status GetNext(JNIEnv* env, jobject& struct_like_row);
 
   Status GetNextArrayItem(JNIEnv* env, jobject list, jobject& result);
 
-  Status GetValueByPos(JNIEnv* env, jobject struct_like, int pos, jclass clazz, jobject &result);
+  Status GetValueByPos(JNIEnv* env, jobject struct_like, int pos, jclass clazz,
+      jobject &result);
 
  private:
   /// Global class references created with JniUtil.
+  inline static jclass iceberg_accessor_cl_ = nullptr;
   inline static jclass impala_iceberg_metadata_scanner_cl_ = nullptr;
 
   /// Method references created with JniUtil.
+  inline static jmethodID iceberg_accessor_get_ = nullptr;
   inline static jmethodID iceberg_metadata_scanner_ctor_ = nullptr;
   inline static jmethodID scan_metadata_table_ = nullptr;
   inline static jmethodID get_accessor_ = nullptr;

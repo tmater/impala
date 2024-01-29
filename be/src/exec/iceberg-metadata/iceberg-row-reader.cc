@@ -30,12 +30,11 @@ IcebergRowReader::IcebergRowReader(IcebergMetadataScanner& metadata_scanner)
   : metadata_scanner_(metadata_scanner) {}
 
 Status IcebergRowReader::InitJNI() {
-  DCHECK(iceberg_accessor_cl_ == nullptr) << "InitJNI() already called!";
+  DCHECK(list_cl_ == nullptr) << "InitJNI() already called!";
   JNIEnv* env = JniUtil::GetJNIEnv();
   if (env == nullptr) return Status("Failed to get/create JVM");
   // Global class references:
-  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
-      "org/apache/iceberg/Accessor", &iceberg_accessor_cl_));
+
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
       "java/util/List", &list_cl_));
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
@@ -54,8 +53,6 @@ Status IcebergRowReader::InitJNI() {
       "(I)Ljava/lang/Object;", &list_get_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, list_cl_, "size",
       "()I", &list_size_));
-  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_accessor_cl_, "get",
-      "(Ljava/lang/Object;)Ljava/lang/Object;", &iceberg_accessor_get_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, java_boolean_cl_, "booleanValue", "()Z",
       &boolean_value_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, java_int_cl_, "intValue", "()I",
@@ -83,48 +80,15 @@ Status IcebergRowReader::MaterializeTuple(JNIEnv* env,
     LOG(INFO) << "TMATE MaterializeTuple slot_desc: " << slot_desc->DebugString();
     google::FlushLogFiles(google::GLOG_INFO);
 
-    jobject accessor = metadata_scanner_.GetAccessor(slot_desc->id());
     jobject accessed_value;
+    RETURN_IF_ERROR(metadata_scanner_.AccessValue(env, slot_desc, struct_like_row,
+        GetJavaClassForImpalaType(slot_desc->type()), accessed_value));
 
-    LOG(INFO) << "TMATE: accessor: " << accessor;
-    google::FlushLogFiles(google::GLOG_INFO);
-    if (accessor == nullptr) { 
-      // we do not have accessor for LIST/MAP elements
-      if (tuple_desc->isTupleOfStructSlot()) {
-        LOG(INFO) << "TMATE: Tuple of a struct, slot;";
-        google::FlushLogFiles(google::GLOG_INFO);
-        // cannot directly access this value, need positional access:
-        // struct_like_row.get(pos, type?)
-        int pos = slot_desc->col_path().back();
-        switch (slot_desc->type().type) {
-          case TYPE_BOOLEAN: { // java.lang.Boolean
-            LOG(INFO) << "TMATE: BOOLEAN";
-            google::FlushLogFiles(google::GLOG_INFO);
-            RETURN_IF_ERROR(metadata_scanner_.GetValueByPos(env, struct_like_row, pos, java_boolean_cl_, accessed_value));
-            break;
-          } case TYPE_STRING: { // java.lang.String
-            LOG(INFO) << "TMATE: TYPE_STRING";
-            google::FlushLogFiles(google::GLOG_INFO);
-            RETURN_IF_ERROR(metadata_scanner_.GetValueByPos(env, struct_like_row, pos, java_char_sequence_cl_, accessed_value));
-            break;
-          }
-          default:
-            VLOG(3) << "Skipping unsupported column type: " << slot_desc->type().type;
-        }
-        // accessed_value = struct_like_row;
-      } else {
-        // We can directly access this value
-        accessed_value = struct_like_row;
-      }
-    } else {
-      accessed_value = env->CallObjectMethod(accessor, iceberg_accessor_get_,
-          struct_like_row);
-      RETURN_ERROR_IF_EXC(env);
-    }
     if (accessed_value == nullptr) {
       tuple->SetNull(slot_desc->null_indicator_offset());
       continue;
     }
+
     void* slot = tuple->GetSlot(slot_desc->tuple_offset());
     switch (slot_desc->type().type) {
       case TYPE_BOOLEAN: { // java.lang.Boolean
@@ -272,8 +236,28 @@ Status IcebergRowReader::WriteArraySlot(JNIEnv* env, jobject struct_like_row,
   //     parent_->AssembleCollection(children_, new_collection_rep_level(), &builder);
   // if (!continue_execution) return false;
   return Status::OK();
+}
 
-
+jclass IcebergRowReader::GetJavaClassForImpalaType(const ColumnType type) {
+  switch (type.type) {
+    case TYPE_BOOLEAN: { // java.lang.Boolean
+      return java_boolean_cl_;
+    } case TYPE_INT: { // java.lang.Integer
+      return java_int_cl_;
+    } case TYPE_BIGINT: // java.lang.Long
+      case TYPE_TIMESTAMP: { // org.apache.iceberg.types.TimestampType
+      return java_long_cl_;
+    } case TYPE_STRING: { // java.lang.String
+      return java_char_sequence_cl_;
+    } case TYPE_STRUCT: {
+      case TYPE_ARRAY:
+      LOG(INFO) << "TMATE: NOT USED FOR STRUCT/ARRAY!";
+      break;
+    }
+    default:
+      VLOG(3) << "Skipping unsupported column type: " << type.type;
+  }
+  return nullptr;
 }
 
 }

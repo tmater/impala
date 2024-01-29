@@ -28,7 +28,11 @@ Status IcebergMetadataScanner::InitJNI() {
   RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
       "org/apache/impala/util/IcebergMetadataScanner",
       &impala_iceberg_metadata_scanner_cl_));
+  RETURN_IF_ERROR(JniUtil::GetGlobalClassRef(env,
+      "org/apache/iceberg/Accessor", &iceberg_accessor_cl_));
   // Method ids:
+  RETURN_IF_ERROR(JniUtil::GetMethodID(env, iceberg_accessor_cl_, "get",
+      "(Ljava/lang/Object;)Ljava/lang/Object;", &iceberg_accessor_get_));
   RETURN_IF_ERROR(JniUtil::GetMethodID(env, impala_iceberg_metadata_scanner_cl_,
       "<init>", "(Lorg/apache/impala/catalog/FeIcebergTable;Ljava/lang/String;)V",
       &iceberg_metadata_scanner_ctor_));
@@ -77,18 +81,57 @@ Status IcebergMetadataScanner::CreateAccessorForFieldId(JNIEnv* env, int field_i
   return Status::OK();
 }
 
-Status AccessValue(JNIEnv* env, SlotId slot_id) {
 
+// Let's just access the value here and let the reader raead it
+Status IcebergMetadataScanner::AccessValue(JNIEnv* env, SlotDescriptor* slot_desc,
+    jobject struct_like_row, jclass clazz, jobject& result) {
+  DCHECK(slot_desc != nullptr);
+
+  // get the accessor first
+  jobject accessor = GetAccessor(slot_desc->id());
+  // we have to choose a strategy, if we have an accessor, let's use that
+  if (accessor != nullptr)  {
+    // this means we have an accessor available, let's use it
+    result = env->CallObjectMethod(accessor, iceberg_accessor_get_,
+        struct_like_row);
+    RETURN_ERROR_IF_EXC(env);
+  } else {
+    // we do not have accessor for LIST/MAP elements
+    if (slot_desc->parent()->isTupleOfStructSlot()) { // 
+      LOG(INFO) << "TMATE: Tuple of a struct, slot;";
+      google::FlushLogFiles(google::GLOG_INFO);
+      // cannot directly access this value, need positional access:
+      // struct_like_row.get(pos, type?)
+      int pos = slot_desc->col_path().back();
+      switch (slot_desc->type().type) {
+        case TYPE_BOOLEAN: { // java.lang.Boolean
+          LOG(INFO) << "TMATE: BOOLEAN";
+          google::FlushLogFiles(google::GLOG_INFO);
+          RETURN_IF_ERROR(GetValueByPos(env, struct_like_row, pos, clazz, result));
+          break;
+        } case TYPE_STRING: { // java.lang.String
+          LOG(INFO) << "TMATE: TYPE_STRING";
+          google::FlushLogFiles(google::GLOG_INFO);
+          RETURN_IF_ERROR(GetValueByPos(env, struct_like_row, pos, clazz, result));
+          break;
+        }
+        default:
+          VLOG(3) << "Skipping unsupported column type: " << slot_desc->type().type;
+      }
+    } else {
+      // We can directly access this value
+      result = struct_like_row;
+    }
+  }
+
+  // it should return the struct like
+  
   return Status::OK();
 }
 
-// TBD
 jobject IcebergMetadataScanner::GetAccessor(SlotId slot_id) {
-  if (jaccessors_.find(slot_id) != jaccessors_.end()) {
-    if (jaccessors_[slot_id] == nullptr) return nullptr;
-    else return jaccessors_[slot_id];
-  }
-  return nullptr;
+  if (jaccessors_.find(slot_id) == jaccessors_.end()) return nullptr;
+  else return jaccessors_[slot_id];
 }
 
 Status IcebergMetadataScanner::GetNext(JNIEnv* env, jobject& struct_like_row) {

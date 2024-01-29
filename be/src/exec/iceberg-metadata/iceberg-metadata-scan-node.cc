@@ -132,6 +132,7 @@ Status IcebergMetadataScanNode::CreateFieldAccessors(JNIEnv* env,
 
 Status IcebergMetadataScanNode::Open(RuntimeState* state) {
   RETURN_IF_ERROR(ScanNode::Open(state));
+  LOG(INFO) << "TMATE collection_slots() :" << tuple_desc_.collection_slots().size();
   iceberg_row_reader_.reset(new IcebergRowReader(metadata_scanner_));
   return Status::OK();
 }
@@ -163,10 +164,11 @@ Status IcebergMetadataScanNode::GetNext(RuntimeState* state, RowBatch* row_batch
     if (struct_like_row == nullptr) {
       *eos = true;
       return Status::OK();
-    }
+    } 
     // Translate a StructLikeRow from Iceberg to Tuple
     RETURN_IF_ERROR(iceberg_row_reader_->MaterializeTuple(env, struct_like_row,
         tuple_desc_, tuple, row_batch->tuple_data_pool(), state));
+    // TODO: materialize collection type
     env->DeleteLocalRef(struct_like_row);
     RETURN_ERROR_IF_EXC(env);
     COUNTER_ADD(rows_read_counter(), 1);

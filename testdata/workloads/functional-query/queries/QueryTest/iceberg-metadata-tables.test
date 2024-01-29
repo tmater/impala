@@ -521,33 +521,25 @@ row_regex:'$NAMENODE/test-warehouse/iceberg_test/hadoop_catalog/ice/iceberg_quer
 ---- TYPES
 STRING,INT
 ====
+
+####
+# Test 11 : Query ARRAY type columns
+####
 ---- QUERY
-select i from functional_parquet.iceberg_query_metadata.entries.readable_metrics;
----- CATCH
-AnalysisException: Illegal table reference to non-collection type: 'functional_parquet.iceberg_query_metadata.entries.readable_metrics'
+select equality_ids from functional_parquet.iceberg_v2_delete_both_eq_and_pos.all_files;
+---- RESULTS
+'NULL'
+'[1,3]'
+'NULL'
+'NULL'
+'[1,3]'
+---- TYPES
+STRING
 ====
 ---- QUERY
-select delete_ids.item
-from functional_parquet.iceberg_query_metadata.all_files, functional_parquet.iceberg_query_metadata.all_files.equality_ids delete_ids;
----- CATCH
-AnalysisException: Querying collection types (ARRAY/MAP) is not supported for Iceberg Metadata tables. (IMPALA-12610, IMPALA-12611)
-====
----- QUERY
-select null_value_counts.key, null_value_counts.value
-from functional_parquet.iceberg_query_metadata.all_files, functional_parquet.iceberg_query_metadata.all_files.null_value_counts null_value_counts;
----- CATCH
-AnalysisException: Querying collection types (ARRAY/MAP) is not supported for Iceberg Metadata tables. (IMPALA-12610, IMPALA-12611)
-====
----- QUERY
-select item
-from functional_parquet.iceberg_query_metadata.all_files a, a.equality_ids e, e.delete_ids;
----- CATCH
-AnalysisException: Querying collection types (ARRAY/MAP) is not supported for Iceberg Metadata tables. (IMPALA-12610, IMPALA-12611)
-====
----- QUERY
-create view iceberg_query_metadata_all_files
-as select equality_ids from functional_parquet.iceberg_query_metadata.all_files;
-select item from iceberg_query_metadata_all_files a, a.equality_ids e, e.delete_ids;
----- CATCH
-AnalysisException: Querying collection types (ARRAY/MAP) is not supported for Iceberg Metadata tables. (IMPALA-12610, IMPALA-12611)
+select partition_summaries from functional_parquet.iceberg_partitioned.all_manifests;
+---- RESULTS
+'[{"contains_null":false,"contains_nan":null,"lower_bound":"2020-01-01-08","upper_bound":"2020-01-01-10"},{"contains_null":false,"contains_nan":null,"lower_bound":"click","upper_bound":"view"}]'
+---- TYPES
+STRING
 ====

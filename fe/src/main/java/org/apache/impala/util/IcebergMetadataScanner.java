@@ -51,108 +51,114 @@ public class IcebergMetadataScanner {
   // Metadata table
   private Table metadataTable_ = null;
 
-  public class TableScanner {
+  // FeTable object is extracted by the backend and passed when this object is created
+  private FeIcebergTable iceTbl_ = null;
 
-    // FeTable object is extracted by the backend and passed when this object is created
-    private FeIcebergTable iceTbl_ = null;
+  // Name of the metadata table
+  private String metadataTableName_;
 
-    // Name of the metadata table
-    private String metadataTableName_;
+  // Persist the file scan task iterator so we can continue after a RowBatch is full
+  private CloseableIterator<FileScanTask> fileScanTaskIterator_;
 
-    // Persist the file scan task iterator so we can continue after a RowBatch is full
-    private CloseableIterator<FileScanTask> fileScanTaskIterator_;
+  // Persist the data rows iterator, so we can continue after a batch is filled
+  private CloseableIterator<StructLike> dataRowsIterator_;
 
-    // Persist the data rows iterator, so we can continue after a batch is filled
-    private CloseableIterator<StructLike> dataRowsIterator_;
+  // Array iterator
+  private int arrayIteratorIndex = 0;
 
-    // Array iterator
-    private int arrayIteratorIndex = 0;
+  public IcebergMetadataScanner(FeIcebergTable iceTbl, String metadataTableName) {
+    Preconditions.checkNotNull(iceTbl);
+    this.iceTbl_ = (FeIcebergTable) iceTbl;
+    this.metadataTableName_ = metadataTableName;
+  }
 
-    public TableScanner(FeIcebergTable iceTbl, String metadataTableName) {
-      Preconditions.checkNotNull(iceTbl);
-      this.iceTbl_ = (FeIcebergTable) iceTbl;
-      this.metadataTableName_ = metadataTableName;
+  /**
+   * Iterates over the {{fileScanTaskIterator_}} to find a {FileScanTask} that has rows.
+   */
+  public boolean FindFileScanTaskWithRows() {
+    while (fileScanTaskIterator_.hasNext()) {
+      DataTask dataTask = (DataTask)fileScanTaskIterator_.next();
+      dataRowsIterator_ = dataTask.rows().iterator();
+      if (dataRowsIterator_.hasNext()) return true;
     }
+    return false;
+  }
 
-    /**
-     * Iterates over the {{fileScanTaskIterator_}} to find a {FileScanTask} that has rows.
-     */
-    public boolean FindFileScanTaskWithRows() {
-      while (fileScanTaskIterator_.hasNext()) {
-        DataTask dataTask = (DataTask)fileScanTaskIterator_.next();
-        dataRowsIterator_ = dataTask.rows().iterator();
-        if (dataRowsIterator_.hasNext()) return true;
-      }
-      return false;
+  /**
+   * Creates the Metadata{Table} which is a predifined Iceberg {Table} object. This method
+   * also starts an Iceberg {TableScan} to scan the {Table}. After the scan is ready it
+   * initializes the iterators, so the {GetNext} call can start fetching the rows through
+   * the Iceberg Api.
+   */
+  public void ScanMetadataTable() {
+    // Create and scan the metadata table
+    metadataTable_ = MetadataTableUtils.createMetadataTableInstance(
+        iceTbl_.getIcebergApiTable(), MetadataTableType.valueOf(metadataTableName_));
+    LOG.info("TMATE MetadataTable schema: " + metadataTable_.schema().toString());
+    TableScan scan = metadataTable_.newScan();
+    // Init the FileScanTask iterator and DataRowsIterator
+    fileScanTaskIterator_ = scan.planFiles().iterator();
+    FindFileScanTaskWithRows();
+  }
+
+  /**
+   * Returns the field {Accessor} for the specified field id. This {Accessor} then is
+   * used to access a field in the {StructLike} object.
+   */
+  public Accessor GetAccessor(int fieldId) { // TODO: JNI
+    Accessor accessor = metadataTable_.schema().accessorForField(fieldId);
+    if (accessor != null) {
+      LOG.info("TMATE: Java side accessor: " + accessor.toString());
+    } else {
+      LOG.info("TMATE: Java side accessor null");
     }
+    return accessor;
+  }
 
-    /**
-     * Creates the Metadata{Table} which is a predifined Iceberg {Table} object. This method
-     * also starts an Iceberg {TableScan} to scan the {Table}. After the scan is ready it
-     * initializes the iterators, so the {GetNext} call can start fetching the rows through
-     * the Iceberg Api.
-     */
-    public void ScanMetadataTable() {
-      // Create and scan the metadata table
-      metadataTable_ = MetadataTableUtils.createMetadataTableInstance(
-          iceTbl_.getIcebergApiTable(), MetadataTableType.valueOf(metadataTableName_));
-      LOG.info("TMATE MetadataTable schema: " + metadataTable_.schema().toString());
-      TableScan scan = metadataTable_.newScan();
-      // Init the FileScanTask iterator and DataRowsIterator
-      fileScanTaskIterator_ = scan.planFiles().iterator();
-      FindFileScanTaskWithRows();
+  /**
+   * Returns the next available row of the scan result. The row is a {StructLike} object
+   * and its fields can be accessed with {Accessor}s.
+   */
+  public StructLike GetNext() {
+    arrayIteratorIndex = 0;
+    // Return the next row in the DataRows iterator
+    if (dataRowsIterator_.hasNext()) {
+      return dataRowsIterator_.next();
     }
-
-    /**
-     * Returns the field {Accessor} for the specified field id. This {Accessor} then is
-     * used to access a field in the {StructLike} object.
-     */
-    public Accessor GetAccessor(int fieldId) { // TODO: JNI
-      Accessor accessor = metadataTable_.schema().accessorForField(fieldId);
-      if (accessor != null) {
-        LOG.info("TMATE: Java side accessor: " + accessor.toString());
-      } else {
-        LOG.info("TMATE: Java side accessor null");
-      }
-      return accessor;
+    // Otherwise this DataTask is empty, find a FileScanTask that has a non-empty DataTask
+    if(FindFileScanTaskWithRows()) {
+      return dataRowsIterator_.next();
     }
+    return null;
+  }
 
-    /**
-     * Returns the next available row of the scan result. The row is a {StructLike} object
-     * and its fields can be accessed with {Accessor}s.
-     */
-    public StructLike GetNextRow() {
-      arrayIteratorIndex = 0;
-      // Return the next row in the DataRows iterator
-      if (dataRowsIterator_.hasNext()) {
-        return dataRowsIterator_.next();
-      }
-      // Otherwise this DataTask is empty, find a FileScanTask that has a non-empty DataTask
-      if(FindFileScanTaskWithRows()) {
-        return dataRowsIterator_.next();
-      }
+  public Object GetNextArrayItem(List<Object> array, Class classTypeClass) {
+    LOG.info("TMATE array size: " + array.size() + " array iterator: " + arrayIteratorIndex);
+    if (arrayIteratorIndex < array.size()) {
+      LOG.info("TMATE: array value: " + array.get(arrayIteratorIndex));
+      return array.get(arrayIteratorIndex++);
+    } else {
       return null;
     }
+  }
 
-    public Object GetNextArrayItem(List<Object> array, Class classTypeClass) {
-      LOG.info("TMATE array size: " + array.size() + " array iterator: " + arrayIteratorIndex);
-      if (arrayIteratorIndex < array.size()) {
-        LOG.info("TMATE: array value: " + array.get(arrayIteratorIndex));
-        return array.get(arrayIteratorIndex++);
-      } else {
-        return null;
-      }
-    }
+  public Object GetValueByFieldId(int fieldId /*, StrucLike structLike */) {
+    // no need to save accessors on C++ side, we can just get the accessor directly
+    // for a field id from the metadata table
+    Accessor accessor = metadataTable_.schema().accessorForField(fieldId);
+    return accessor.get(new Object());
 
-    public <T> T GetValueByPos(StructLike structLike, int pos, Class<T> classTypeClass) {
-      T result = structLike.get(pos, classTypeClass);
-      if (result != null) {
-        LOG.info("TMATE: GetValueByPos: " + result.toString());
-      } else {
-        LOG.info("TMAET: GetValueByPos NULL");
-      }
-      return result;
+  }
+
+  // public <T> T GetValueByPosition(StructLike structLike, int pos, Class<T> classTypeClass) {
+  public <T> T GetValueByPos(StructLike structLike, int pos, Class<T> classTypeClass) {
+    T result = structLike.get(pos, classTypeClass);
+    if (result != null) {
+      LOG.info("TMATE: GetValueByPos: " + result.toString());
+    } else {
+      LOG.info("TMAET: GetValueByPos NULL");
     }
+    return result;
   }
 
   /**
@@ -175,36 +181,6 @@ public class IcebergMetadataScanner {
         return iterator.next();
       }
       return null;
-    }
-  }
-
-  public class ValueReader {
-
-
-
-    /// list/map does not support accessors
-    public <Object> GetValueByFieldId(int fieldId /*, StrucLike structLike */) {
-      // no need to save accessors on C++ side, we can just get the accessor directly
-      // for a field id from the metadata table
-      Accessor accessor = metadataTable_.schema().accessorForField(fieldId);
-      return accessor.get(new Object());
-      if (accessor != null) {
-        LOG.info("TMATE: Java side accessor: " + accessor.toString());
-      } else {
-        LOG.info("TMATE: Java side accessor null");
-      }
-      return accessor;
-    }
-
-    /// list/map does not support accessors
-    public <T> T GetValueByPosition(StructLike structLike, int pos, Class<T> classTypeClass) {
-      T result = structLike.get(pos, classTypeClass);
-      if (result != null) {
-        LOG.info("TMATE: GetValueByPos: " + result.toString());
-      } else {
-        LOG.info("TMATE: GetValueByPos NULL");
-      }
-      return result;
     }
   }
 

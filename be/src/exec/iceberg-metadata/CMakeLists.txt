@@ -25,7 +25,6 @@ add_library(ExecIcebergMetadata
   iceberg-metadata-scan-node.cc
   iceberg-row-reader.cc
   iceberg-metadata-scanner.cc
-  iceberg-accessor.cc
 )
 
 add_dependencies(ExecIcebergMetadata gen-deps)

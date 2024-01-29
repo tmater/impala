@@ -132,7 +132,6 @@ Status IcebergMetadataScanNode::CreateFieldAccessors(JNIEnv* env,
 
 Status IcebergMetadataScanNode::Open(RuntimeState* state) {
   RETURN_IF_ERROR(ScanNode::Open(state));
-  LOG(INFO) << "TMATE collection_slots() :" << tuple_desc_.collection_slots().size();
   iceberg_row_reader_.reset(new IcebergRowReader(metadata_scanner_));
   return Status::OK();
 }

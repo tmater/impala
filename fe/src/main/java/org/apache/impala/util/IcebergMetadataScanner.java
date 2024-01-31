@@ -29,7 +29,6 @@ import org.apache.iceberg.MetadataTableType;
 import org.apache.iceberg.MetadataTableUtils;
 import org.apache.iceberg.StructLike;
 import org.apache.impala.catalog.FeIcebergTable;
-import org.jline.utils.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.iceberg.Table;
@@ -105,13 +104,14 @@ public class IcebergMetadataScanner {
    * Returns the field {Accessor} for the specified field id. This {Accessor} then is
    * used to access a field in the {StructLike} object.
    */
-  public Accessor GetAccessor(int fieldId) { // TODO: JNI
+  public Accessor GetAccessor(int fieldId) { // TODO: remove
     Accessor accessor = metadataTable_.schema().accessorForField(fieldId);
     if (accessor != null) {
       LOG.info("TMATE: Java side accessor: " + accessor.toString());
     } else {
       LOG.info("TMATE: Java side accessor null");
     }
+    // TODO INIT ArrayScanner???
     return accessor;
   }
 
@@ -142,7 +142,7 @@ public class IcebergMetadataScanner {
     }
   }
 
-  public Object GetValueByFieldId(int fieldId /*, StrucLike structLike */) {
+  public Object GetValueByFieldId(StructLike structLike, int fieldId) {
     // no need to save accessors on C++ side, we can just get the accessor directly
     // for a field id from the metadata table
     Accessor accessor = metadataTable_.schema().accessorForField(fieldId);
@@ -151,7 +151,7 @@ public class IcebergMetadataScanner {
   }
 
   // public <T> T GetValueByPosition(StructLike structLike, int pos, Class<T> classTypeClass) {
-  public <T> T GetValueByPos(StructLike structLike, int pos, Class<T> classTypeClass) {
+  public <T> T GetValueByPosition(StructLike structLike, int pos, Class<T> classTypeClass) {
     T result = structLike.get(pos, classTypeClass);
     if (result != null) {
       LOG.info("TMATE: GetValueByPos: " + result.toString());

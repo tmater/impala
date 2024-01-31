@@ -39,6 +39,11 @@ class IcebergMetadataScanner {
   // TODO: method for every IcebergMetadataScanner methods
   Status ScanMetadataTable(JNIEnv* env);
 
+  Status InitSlotIdFieldIdMap(const TupleDescriptor* tuple_desc_);
+
+  Status CreateFieldAccessors(JNIEnv* env,
+    const SlotDescriptor* struct_slot_desc);
+
   Status CreateAccessorForFieldId(JNIEnv* env, int field_id, SlotId slot_id);
 
   jobject GetAccessor(SlotId slot_id);
@@ -50,7 +55,10 @@ class IcebergMetadataScanner {
 
   Status GetNextArrayItem(JNIEnv* env, jobject list, jobject& result);
 
-  Status GetValueByPos(JNIEnv* env, jobject struct_like, int pos, jclass clazz,
+  Status GetValueByFieldId(JNIEnv* env, jobject struct_like,
+      SlotDescriptor* slot_desc, jobject &result);
+
+  Status GetValueByPosition(JNIEnv* env, jobject struct_like, int pos, jclass clazz,
       jobject &result);
 
  private:
@@ -65,17 +73,17 @@ class IcebergMetadataScanner {
   inline static jmethodID get_accessor_ = nullptr;
   inline static jmethodID get_next_ = nullptr;
   inline static jmethodID get_next_array_item_ = nullptr;
-  inline static jmethodID get_value_by_pos_ = nullptr;
+  inline static jmethodID get_value_by_field_id_ = nullptr;
+  inline static jmethodID get_value_by_position_ = nullptr;
 
   /// Iceberg metadata scanner Java object, it helps preparing the metadata table and
   /// executes an Iceberg table scan. Allows the ScanNode to fetch the metadata from
   /// the Java Heap.
   jobject jmetadata_scanner_;
 
-  /// Accessor map for the scan result, pairs the slot ids with the java Accessor
-  /// objects.
+  /// Accessor map for the scan result, pairs the slot ids with the java Accessor objects.
   std::unordered_map<SlotId, jobject> jaccessors_;
-
+  std::unordered_map<SlotId, int> slot_id_to_field_id;
 };
 
 

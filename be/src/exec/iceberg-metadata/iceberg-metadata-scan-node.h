@@ -57,7 +57,7 @@ class Status;
 class IcebergMetadataScanPlanNode : public ScanPlanNode {
  public:
   Status CreateExecNode(RuntimeState* state, ExecNode** node) const override;
-  ~IcebergMetadataScanPlanNode(){}
+  ~IcebergMetadataScanPlanNode() {}
 };
 
 class IcebergMetadataScanNode : public ScanNode {

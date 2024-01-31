@@ -89,7 +89,6 @@ class IcebergRowReader {
 
   /// Adapter class that gives back the Java class for the Column type.
   jclass GetJavaClassForImpalaType(const ColumnType type);
-  
 };
 
 }

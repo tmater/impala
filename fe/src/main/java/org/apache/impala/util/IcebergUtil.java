@@ -111,6 +111,9 @@ import org.apache.impala.thrift.TIcebergFileFormat;
 import org.apache.impala.thrift.TIcebergPartitionField;
 import org.apache.impala.thrift.TIcebergPartitionSpec;
 import org.apache.impala.thrift.TIcebergPartitionTransformType;
+import org.jline.utils.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("UnstableApiUsage")
 public class IcebergUtil {
@@ -121,6 +124,9 @@ public class IcebergUtil {
   @SuppressWarnings("unused")
   private static final int ICEBERG_EPOCH_HOUR = 0;
   public static final String HIVE_CATALOG = "hive.catalog";
+
+  final static Logger LOG = LoggerFactory.getLogger(IcebergUtil.class);
+
 
   /**
    * Returns the corresponding catalog implementation for 'feTable'.
@@ -575,6 +581,7 @@ public class IcebergUtil {
     if (table.snapshotId() == -1) return CloseableIterable.empty();
 
     TableScan scan = createScanAsOf(table, timeTravelSpec);
+    LOG.info("TMATE: " + scan.snapshot().toString());
     for (Expression predicate : predicates) {
       scan = scan.filter(predicate);
     }
